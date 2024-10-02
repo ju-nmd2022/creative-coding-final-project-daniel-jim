@@ -99,22 +99,20 @@ function setup() {
   video.hide();
 
   handpose.detectStart(video, getHandsData);
-  // synth = new Tone.Synth().toDestination();
 
-  gainNode = new Tone.Gain(0.05).toDestination();  // 0.2 innebär 20% av full volym
+  gainNode = new Tone.Gain(0.2).toDestination();  
 
- // Koppla synth till gainNode istället för direkt till destination
- synth = new Tone.PolySynth(Tone.Synth, {
-  oscillator: {
-    type: "triangle",
-  },
-  envelope: {
-    attack: attackVariable,
-    decay: 0.2,
-    sustain: 0.2,
-    release: releaseVariable,
-  },
-}).connect(gainNode);  // Koppla till gainNode
+  synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+      type: "triangle",
+    },
+    envelope: {
+      attack: 0.1,
+      decay: 0.2,
+      sustain: 0.2,
+      release: 0.4,
+    },
+  }).connect(gainNode); 
 }
 
 function draw() {
