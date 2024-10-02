@@ -1,91 +1,50 @@
-/*
-NOTES!
-
-- "Moodet"
-1: Random variable som randomizas när det startar för alla 3, och det oftast runt 35-65, inget överdrivet.
-
-1 egen variable
-trött / pigg ( 0 - 100 )
-- Tid på dygnet, (Väldigt tidigt / väldigt sen --> Sänker värdet)
-  Övriga dags tider, (mitt på dan högst --> höjer värdet)
-
-   - + på det redan satta randomet valuet
-
-- Högt ljud (piggare) Lågt ljud (tröttare)
-
-en / fler personer (under tid --> tröttare o tröttare, flera personer --> sjunker snabbare)
-
-
-
-
-
-
-
-
-Högt ljud (random om han blir argare, eller gladare av det)
-
-
-  arg / neutral  ( 0 - 100 )
-  Om systemet blir trött, går även värdet här ner, mot att bli lite arg
-  ()
-
-  Pekar finger --> Arg direkt
-
-
-
-  ledsen / glad ( 0 - 100 )
-  Fler personer, gladare
-
-
-
-
-
-DEL 2
-
-Arg / Neutral 
-mer volym, distortion, lite off (snarare för hetsig "snabbt" än för seg), 
-
-
-
-
-
-
-
-
-*/
-
-
-
-
 let handpose;
 let video;
 let hands = [];
 let synth;
+let tiredTimer = 0;
 let timer = 0;
-let mood;
+let interactionTimer = 10;
+let interval = 25;
+
+let gameStarted = false
+
+
+let tiredOff1 = 0;
+let tiredOff2 = 0;
+
+
+let tiredMood = 0;
+
+// Skala 1-100
+let angryMood = 10;
+
+let angryOff1 = 0;
+let angryOff2 = 0;
+
+// Chat GPT Formel
+// let attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
+
+// Attack Value Min Max
+let minValueAttack = 0.05;
+let maxValueAttack = 0.3;
+let attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
+
+// Release Value Min Max
+let minValueRelease = 0.1;
+let maxValueRelease = 0.5;
+let releaseValue = maxValueRelease - ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
+
+// Distortion Value Min Max
+let minValueDistortion = 0.01;
+let maxValueDistortion = 0.3;
+let distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
+
+
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 
-let attackVariable = 0.5;
-// Attack, lågt value = arg
-
-let releaseVariable = 0.4;
-//högt value = trött, kortare skulle kunna vara både piggt eller arg
-
 let gainNode;
-
-// C D EFGAB
-// Mood 1 - Neutral
-//Mood 2 - Glad
-//Mood 3 - Ledsen
-//Mood 4 - Arg
-//Mood 5 - trött
-
-// 1: Neutrala toner
-// 2: Up lifting ---> :D
-// 3: Lite deppigare, down tempo, mörkare
-// 4: Hetsigt, lite off (kanske för "intense")
-// 5: långsamt, lite off, men inte varken för mörkt eller ljust
-
+let distortion; 
 
 function preload() {
   handpose = ml5.handPose();
@@ -100,64 +59,128 @@ function setup() {
 
   handpose.detectStart(video, getHandsData);
 
+  // Skapa GainNode
   gainNode = new Tone.Gain(0.2).toDestination();  
 
+  distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
+
+  // Koppla synth till distortion
   synth = new Tone.PolySynth(Tone.Synth, {
     oscillator: {
       type: "triangle",
     },
     envelope: {
-      attack: 0.1,
+      attack: attackValue,
       decay: 0.2,
       sustain: 0.2,
-      release: 0.4,
+      release: releaseValue,
     },
-  }).connect(gainNode); 
+  }).connect(distortion); // Koppla synthens output till distorsion
+
+  if(angryMood < 70) {
+    distortion.distortion = 0;
+  }
 }
 
+
+function angryMoodUpdates(){
+
+  //Synth Settings
+  attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
+  releaseValue = maxValueRelease - ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
+  synth.set({
+    envelope: {
+      attack: attackValue,
+      release: releaseValue,
+    },
+  });
+
+//Distortion
+if (angryMood > 69){
+  distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
+  distortion.distortion = distortionValue;
+} else{
+  distortion.distortion = 0;
+}
+}
+
+
+
+function mouseClicked() {
+  if(gameStarted){
+    gameStarted = false;
+  }else{
+  gameStarted = true; 
+  }
+}
+
+
 function draw() {
-  image(video, 0, 0, width, height);
 
-  // for (let hand of hands) {
-  //   let indexFinger = hand.middle_finger_tip;
-  //   let thumb = hand.thumb_tip;
+  translate(video.width, 0); // Flytta koordinatsystemet till höger kanten av videon
+  scale(-1, 1); // Invertera videon horisontellt
+  image(video, 0, 0); // Rita videon
 
-  //   let centerX = (indexFinger.x + thumb.x) / 2;
-  //   let centerY = (indexFinger.y + thumb.y) / 2;
 
-  //   let distance = dist(indexFinger.x, indexFinger.y, thumb.x, thumb.y);
+  if(gameStarted){
+    // Kontrollera om det finns händer detekterade
+    if (hands.length > 0) {
+      // Loopa genom alla händer som detekterats
+      for (let i = 0; i < hands.length; i++) {
+        let hand = hands[i];
+        let indexFinger = hand.index_finger_tip;
+        let thumb = hand.thumb_tip;
+        let middleFinger = hand.middle_finger_tip;
+        let ringFinger = hand.ring_finger_tip;
+        let pinky = hand.pinky_finger_tip;
 
-  //   noStroke();
-  //   fill(0, 0, 255);
-  //   ellipse(centerX, centerY, distance);
-  // }
-  
+        fill(0, 255, 0);
+        ellipse(indexFinger.x, indexFinger.y, 10);
+        ellipse(thumb.x, thumb.y, 10);
+        ellipse(middleFinger.x, middleFinger.y, 10);
+        ellipse(ringFinger.x, ringFinger.y, 10);
+        ellipse(pinky.x, pinky.y, 10);
 
-     if (hands.length > 0) {
-       let indexFinger = hands[0].index_finger_tip;
-       let thumb = hands[0].thumb_tip;
-       let middleFinger = hands[0].middle_finger_tip;
-       let ringFinger = hands[0].ring_finger_tip;
-       let pinky = hands[0].pinky_finger_tip;
+        // Om pinky är i ett visst område, öka angryMood
+        if(pinky.x > 400 && pinky.y < 100 && angryMood < 100 && timer > interval){
+          angryMood++;
+          interval = interval - 0.08;
+          angryOff1 = angryOff1 + 0.0004;
+          angryOff2 = angryOff2 + 0.0006;
+        }
 
-       fill(0, 255, 0);
-       ellipse(indexFinger.x, indexFinger.y, 10);
-       ellipse(thumb.x, thumb.y, 10);
-       ellipse(middleFinger.x, middleFinger.y, 10);
-       ellipse(ringFinger.x, ringFinger.y, 10);
-       ellipse(pinky.x, pinky.y, 10);
+        // Kontrollera om middle finger är uppsträckt för att sätta angryMood till 100
+        if (middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50 && interactionTimer > 10 && angryMood < 100) {
+          angryMood = angryMood + (Math.random() * 5)
+          if(angryMood > 100){
+            angryMood = 100;
+          }
+          interactionTimer = 0;
+        }
+      }
+    }
 
-       if (middleFinger.y < thumb.y- 30 && middleFinger.y < indexFinger.y- 50 && middleFinger.y < ringFinger.y- 50 && middleFinger.y < pinky.y - 50){
-        console.log("TEST");
-       }
+    if (timer > interval) {
+      playNote();
+      timer = 0;
+    }
 
+    if(tiredTimer > interval*10){
+      if(Math.random() > 0.6){
+      tiredMood++;
      }
 
-  if(timer > 25){
-    playNote();
-    timer = 0;
+      tiredTimer = 0;
+    }
+
+    angryMoodUpdates();
+    console.log(angryMood);
+    console.log(tiredMood);
+
+    timer++;
+    tiredTimer++;
+    interactionTimer++;
   }
-  timer ++;
 }
 
 function getHandsData(results) {
@@ -165,28 +188,26 @@ function getHandsData(results) {
 }
 
 function playNote() {
-    let note1 = Math.floor(Math.random() * 6);
+  let note1 = Math.floor(Math.random() * 6);
 
-    let note2 = note1 + 2;
-    if (note2 == 7){
-      note2 = 0;
-    } else if (note2 == 8){
-      note2 = 1;
-    }
+  let note2 = note1 + 2;
+  if (note2 == 7) {
+    note2 = 0;
+  } else if (note2 == 8) {
+    note2 = 1;
+  }
 
-    let note3 = note2 + 2;
-    if (note3 == 7){
-      note3 = 0;
-    } else if (note3 == 8){
-      note3 = 1;
-    }
+  let note3 = note2 + 2;
+  if (note3 == 7) {
+    note3 = 0;
+  } else if (note3 == 8) {
+    note3 = 1;
+  }
 
-    //let note = 
-    synth.triggerAttackRelease(notes[note1], "8n");
-    synth.triggerAttackRelease(notes[note2], "8n");
-    synth.triggerAttackRelease(notes[note3], "8n");
-    
-
+  // Hämta den aktuella tiden från Tone.js
+  let now = Tone.now();
+  // Spela tre noter med små fördröjningar mellan
+  synth.triggerAttackRelease(notes[note1], "8n", now); // Spela omedelbart
+  synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1); 
+  synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
 }
-
-
