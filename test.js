@@ -50,6 +50,15 @@ const angryNotes = ["C4", "C#4", "D#4", "F#4", "G#4", "A#4", "B4"]; // Dissonant
 let gainNode;
 let distortion;
 
+//Flow field
+const fieldSize = 50;
+const maxCols = Math.ceil(640 / fieldSize); // Use the video width for the field size
+const maxRows = Math.ceil(480 / fieldSize); // Use the video height for the field size
+const divider = 4;
+let field = [];
+let agents = [];
+let middleFingerPos;
+
 function preload() {
   handpose = ml5.handPose();
 }
@@ -61,6 +70,9 @@ function setup() {
   video.hide();
 
   handpose.detectStart(video, getHandsData);
+
+  field = generateField();
+  generateAgents();
 
   // Skapa GainNode
   gainNode = new Tone.Gain(0.2).toDestination();
@@ -110,6 +122,42 @@ function angryMoodUpdates() {
   }
 }
 
+//Garrit flow field code
+function generateField() {
+  let field = [];
+  noiseSeed(Math.random() * 100);
+  for (let x = 0; x < maxCols; x++) {
+    field.push([]);
+    for (let y = 0; y < maxRows; y++) {
+      let pos = createVector(x * fieldSize, y * fieldSize);
+
+      // If we have a detected middle finger position
+      if (middleFingerPos) {
+        // Create a vector pointing from the current position to the middle finger
+        let attractor = p5.Vector.sub(middleFingerPos, pos).normalize();
+        field[x].push(attractor); // Set the flow field vector to point towards the middle finger
+      } else {
+        // Default to random noise if no middle finger is detected
+        let noiseValue = noise(x / divider, y / divider) * Math.PI * 2;
+        field[x].push(p5.Vector.fromAngle(noiseValue));
+      }
+    }
+  }
+  return field;
+}
+
+function generateAgents() {
+  for (let i = 0; i < 200; i++) {
+    let agent = new Agent(
+      Math.random() * 640, // Video width
+      Math.random() * 480, // Video height
+      4,
+      0.1
+    );
+    agents.push(agent);
+  }
+}
+
 function mouseClicked() {
   if (gameStarted) {
     gameStarted = false;
@@ -124,6 +172,31 @@ function draw() {
   image(video, 0, 0); // Rita videon
 
   if (gameStarted) {
+    //Garrit flow field + Gpt to know where to put it
+
+    // Get the current middle finger position
+    if (hands.length > 0) {
+      let hand = hands[0];
+      middleFingerPos = createVector(
+        hand.middle_finger_tip.x,
+        hand.middle_finger_tip.y
+      );
+    }
+
+    // Update the flow field based on the middle finger position
+    field = generateField(); // Regenerate the field on every frame
+
+    // Agents follow the updated field
+    for (let agent of agents) {
+      const x = Math.floor(agent.position.x / fieldSize);
+      const y = Math.floor(agent.position.y / fieldSize);
+      const desiredDirection = field[x][y];
+      agent.follow(desiredDirection);
+      agent.update();
+      agent.checkBorders();
+      agent.draw();
+    }
+
     // Kontrollera om det finns händer detekterade
     if (hands.length > 0) {
       // Loopa genom alla händer som detekterats
@@ -248,6 +321,75 @@ function playNote() {
   synth.triggerAttackRelease(note1, "8n", now); // Play immediately
   synth.triggerAttackRelease(note2, "8n", now + angryOff1 + tiredOff1);
   synth.triggerAttackRelease(note3, "8n", now + angryOff2 + tiredOff2);
+}
+
+//Garrit flow field
+class Agent {
+  constructor(x, y, maxSpeed, maxForce) {
+    this.position = createVector(x, y);
+    this.lastPosition = createVector(x, y);
+    this.acceleration = createVector(0, 0);
+    this.velocity = createVector(0, 0);
+    this.maxSpeed = maxSpeed;
+    this.maxForce = maxForce;
+  }
+
+  follow(desiredDirection) {
+    desiredDirection = desiredDirection.copy();
+    desiredDirection.mult(this.maxSpeed);
+    let steer = p5.Vector.sub(desiredDirection, this.velocity);
+    steer.limit(this.maxForce);
+    this.applyForce(steer);
+  }
+
+  applyForce(force) {
+    this.acceleration.add(force);
+  }
+
+  update() {
+    this.lastPosition = this.position.copy();
+    this.velocity.add(this.acceleration);
+    this.velocity.limit(this.maxSpeed);
+    this.position.add(this.velocity);
+    this.acceleration.mult(0);
+  }
+
+  checkBorders() {
+    if (this.position.x < 0) {
+      this.position.x = 640;
+      this.lastPosition.x = 640;
+    } else if (this.position.x > 640) {
+      this.position.x = 0;
+      this.lastPosition.x = 0;
+    }
+    if (this.position.y < 0) {
+      this.position.y = 480;
+      this.lastPosition.y = 480;
+    } else if (this.position.y > 480) {
+      this.position.y = 0;
+      this.lastPosition.y = 0;
+    }
+  }
+
+  draw() {
+    if (hands.length > 0) {
+      let hand = hands[0];
+      middleFingerPos = createVector(
+        hand.middle_finger_tip.x,
+        hand.middle_finger_tip.y
+      );
+    }
+    push();
+    stroke(255, 0, 0, 100);
+    strokeWeight(2);
+    line(
+      this.lastPosition.x,
+      this.lastPosition.y,
+      this.position.x,
+      this.position.y
+    );
+    pop();
+  }
 }
 
 //function to pick a note based on mood
