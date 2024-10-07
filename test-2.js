@@ -2,12 +2,10 @@ let handpose;
 let video;
 let hands = [];
 let synth;
-let tiredTimer = 0;
 let timer = 0;
 let interactionTimer = 10;
-let interval = 25;
 
-let gameStarted = false
+let gameStarted = false;
 
 let tiredOff1 = 0;
 let tiredOff2 = 0;
@@ -15,52 +13,53 @@ let tiredOff2 = 0;
 let tiredMood = 0;
 
 // Skala 1-100
-let angryMood = 10;
+//let angryMood = 40 + (Math.random() * 20);
+let angryMood = 1;
 
-let angryOff1 = 0;
-let angryOff2 = 0;
+let angryOff1 = 0.01;
+let angryOff2 = 0.02;
 
-// Chat GPT Formel
-// let attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
+// Attack value (Start (without mood change)) 0.1 - 0.2
+let attackBaseValue = 0.05 + Math.random() * 0.05;
+let attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
+let attackValueAngryAdd; // Initialiseras senare
+let attackValue; // Initialiseras senare
 
-
-
-
-// Attack Value Min Max
-let minValueAttack = 0.05;
-let maxValueAttack = 0.3;
-//let attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
-
-// Release Value Min Max
-let minValueRelease = 0.1;
-let maxValueRelease = 0.5;
-//let releaseValue = maxValueRelease - ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
-
-//Attack value (Start (without mood change)) 0.1 - 0.2
-let attackValue = 0.1 + Math.random() * 0.1;
-
-//Release value (Start (without mood change)) 0.2-0.3
-let releaseValue = 0.2 + Math.random() * 0.1;
-
-
-let releaseValueAngryAdd;
+// Release base value (0.1-0.2) + mood changes (0-0.4 depending on mood and random factor)
+let releaseBaseValue = 0.11 + Math.random() * 0.08;
+let releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
+let releaseValueAngryAdd; // Initialiseras senare
+let releaseValue; // Initialiseras senare
 
 // Distortion Value Min Max
 let minValueDistortion = 0.01;
 let maxValueDistortion = 0.3;
-let distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
+let distortionValue =
+  minValueDistortion +
+  ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
+
+
+// Interval
+let intervalBaseValue = 25;
+let intervalRandomFactor = 0.1 + Math.random()*0.05;
+let intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+let interval = intervalBaseValue - intervalAngryMoodRemove;
+
 
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 
-let gainNode;
+let gainNode; // Declared here but initialized later
 let distortion; 
+
+let soundInteraction = true;
+let soundInterval = 30;
+let soundTimer = 0;
 
 function preload() {
   handpose = ml5.handPose();
 }
 
 function setup() {
-
   createCanvas(640, 480);
   video = createCapture(VIDEO);
   video.size(640, 480);
@@ -70,7 +69,6 @@ function setup() {
 
   // Skapa GainNode
   gainNode = new Tone.Gain(0.2).toDestination();  
-
   distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
 
   // Koppla synth till distortion
@@ -86,43 +84,58 @@ function setup() {
     },
   }).connect(distortion); // Koppla synthens output till distorsion
 
-  if(angryMood < 70) {
+  if (angryMood < 70) {
     distortion.distortion = 0;
   }
+
+  // Update values for attack and release
+  attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+  attackValue = releaseBaseValue + attackValueAngryAdd;
+
+  releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+  releaseValue = releaseBaseValue + releaseValueAngryAdd;
 }
 
+function soundValuesUpdate() {
+  if (soundInteraction) {
+    // Attack
+    attackBaseValue = 0.05 + Math.random() * 0.05;
+    attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
+    attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+    // Direct operator for Attack Value
+    attackValue = attackBaseValue + attackValueAngryAdd;
 
-function soundValuesUpdate(){
-
-  //Attack value (Start (without mood change)) 0.1 - 0.2
-  let attackValue = 0.1 + Math.random() * 0.1;
-
-//Release value (Start (without mood change)) 0.2-0.3
-  let releaseValue = 0.2 + Math.random() * 0.1;
-
-
-  //Synth Settings
-  //attackValue = maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
-  //releaseValue = maxValueRelease - ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
+    // Release
+    releaseBaseValue = 0.11 + Math.random() * 0.08;
+    releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
+    releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+    // Direct operator for Release Value
+    releaseValue = releaseBaseValue + releaseValueAngryAdd;
 
 
-  synth.set({
-    envelope: {
-      attack: attackValue,
-      release: releaseValue,
-    },
-  });
+    intervalBaseValue = 30;
+    intervalRandomFactor = 10 + Math.random() * 2;
+    intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+    interval = intervalBaseValue - intervalAngryMoodRemove;
 
-//Distortion
-if (angryMood > 69){
-  distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
-  distortion.distortion = distortionValue;
-} else{
-  distortion.distortion = 0;
+
+    synth.set({
+      envelope: {
+        attack: attackValue,
+        release: releaseValue,
+      },
+    });
+
+    // Distortion
+    if (angryMood > 69) {
+      //distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
+      //distortion.distortion = distortionValue;
+    } else {
+      distortion.distortion = 0;
+    }
+    soundInteraction = false;
+  }
 }
-}
-
-
 
 function mouseClicked() {
   if(gameStarted){
@@ -132,15 +145,13 @@ function mouseClicked() {
   }
 }
 
-
 function draw() {
-
   translate(video.width, 0); // Flytta koordinatsystemet till höger kanten av videon
   scale(-1, 1); // Invertera videon horisontellt
   image(video, 0, 0); // Rita videon
 
-
-  if(gameStarted){
+  if (gameStarted) {
+  
     // Kontrollera om det finns händer detekterade
     if (hands.length > 0) {
       // Loopa genom alla händer som detekterats
@@ -161,10 +172,7 @@ function draw() {
 
         // Om pinky är i ett visst område, öka angryMood
         if(pinky.x > 400 && pinky.y < 100 && angryMood < 100 && timer > interval){
-          angryMood++;
-          interval = interval - 0.08;
-          angryOff1 = angryOff1 + 0.0004;
-          angryOff2 = angryOff2 + 0.0006;
+          angryMood = angryMood + (Math.random() * 2);
         }
 
         // Kontrollera om middle finger är uppsträckt för att sätta angryMood till 100
@@ -183,23 +191,24 @@ function draw() {
       timer = 0;
     }
 
-    if(tiredTimer > interval*10){
-      if(Math.random() > 0.6){
-      tiredMood++;
-     }
-      tiredTimer = 0;
+
+    if(soundTimer > soundInterval && soundInteraction === false){
+      soundInteraction = true;
+      soundTimer = 0;
     }
 
     soundValuesUpdate();
     console.log(angryMood);
-    console.log(tiredMood);
+    //console.log(tiredMood);
 
     timer++;
-    tiredTimer++;
     interactionTimer++;
 
-    console.log(releaseValue);
-    console.log(attackValue);
+    soundTimer++;
+    console.log(interval);
+
+
+    
   }
 }
 
@@ -224,10 +233,11 @@ function playNote() {
     note3 = 1;
   }
 
-  // Hämta den aktuella tiden från Tone.js
+
+  // Get the current time from Tone.js
   let now = Tone.now();
   // Spela tre noter med små fördröjningar mellan
-  synth.triggerAttackRelease(notes[note1], "8n", now); // Spela omedelbart
+  synth.triggerAttackRelease(notes[note1], "8n", now); 
   synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1); 
   synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
 }
