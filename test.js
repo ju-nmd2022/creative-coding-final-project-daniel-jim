@@ -13,8 +13,7 @@ let tiredOff2 = 0;
 let tiredMood = 0;
 
 // Skala 1-100
-//let angryMood = 40 + (Math.random() * 20);
-let angryMood = 1;
+let angryMood = 40 + (Math.random() * 20);
 
 let angryOff1 = 0.01;
 let angryOff2 = 0.02;
@@ -39,11 +38,22 @@ let distortionValue =
   ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
 
 
+
+
+//ENDAST FIXAD HÄR UPPE, INTE I UPDATE
+let volumeBaseValue = 0.2;
+let volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
+let volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+let volumeValue = volumeBaseValue + volumeValueAngryAdd;
+
+
 // Interval
 let intervalBaseValue = 25;
 let intervalRandomFactor = 0.1 + Math.random()*0.05;
 let intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
 let interval = intervalBaseValue - intervalAngryMoodRemove;
+
+
 
 
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
@@ -68,7 +78,7 @@ function setup() {
   handpose.detectStart(video, getHandsData);
 
   // Skapa GainNode
-  gainNode = new Tone.Gain(0.2).toDestination();  
+  gainNode = new Tone.Gain(volumeValue).toDestination();  
   distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
 
   // Koppla synth till distortion
@@ -113,12 +123,25 @@ function soundValuesUpdate() {
     releaseValue = releaseBaseValue + releaseValueAngryAdd;
 
 
+    // Volume
+    volumeBaseValue = 0.2;
+    volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
+    volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+    // Direct operator for Volume Value
+    volumeValue = volumeBaseValue + volumeValueAngryAdd;
+
+
+    //Interval
     intervalBaseValue = 30;
     intervalRandomFactor = 10 + Math.random() * 2;
     intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+    //Interval direct operator
     interval = intervalBaseValue - intervalAngryMoodRemove;
 
 
+    
+
+    //Uptade Synth
     synth.set({
       envelope: {
         attack: attackValue,
@@ -126,6 +149,7 @@ function soundValuesUpdate() {
       },
     });
 
+    
     // Distortion
     if (angryMood > 69) {
       //distortionValue = minValueDistortion + ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
@@ -198,14 +222,17 @@ function draw() {
     }
 
     soundValuesUpdate();
-    console.log(angryMood);
+    console.log("Angry Mood Value: " + angryMood);
     //console.log(tiredMood);
 
     timer++;
     interactionTimer++;
 
     soundTimer++;
-    console.log(interval);
+    console.log("Release Value: " + releaseValue);
+    console.log("Attack Value: " + attackValue);
+    console.log("Interval: " + interval);
+    console.log("Volume Value: " + volumeValue);
 
 
     
