@@ -2,10 +2,8 @@ let handpose;
 let video;
 let hands = [];
 let synth;
-let tiredTimer = 0;
 let timer = 0;
 let interactionTimer = 10;
-let interval = 25;
 
 let gameStarted = false;
 
@@ -15,7 +13,8 @@ let tiredOff2 = 0;
 let tiredMood = 0;
 
 // Skala 1-100
-let angryMood = 40 + (Math.random() * 20);
+//let angryMood = 40 + (Math.random() * 20);
+let angryMood = 1;
 
 let angryOff1 = 0.01;
 let angryOff2 = 0.02;
@@ -39,6 +38,14 @@ let distortionValue =
   minValueDistortion +
   ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
 
+
+// Interval
+let intervalBaseValue = 25;
+let intervalRandomFactor = 0.1 + Math.random()*0.05;
+let intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+let interval = intervalBaseValue - intervalAngryMoodRemove;
+
+
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 
 let gainNode; // Declared here but initialized later
@@ -59,9 +66,6 @@ function setup() {
   video.hide();
 
   handpose.detectStart(video, getHandsData);
-
-  field = generateField();
-  generateAgents();
 
   // Skapa GainNode
   gainNode = new Tone.Gain(0.2).toDestination();  
@@ -108,6 +112,13 @@ function soundValuesUpdate() {
     // Direct operator for Release Value
     releaseValue = releaseBaseValue + releaseValueAngryAdd;
 
+
+    intervalBaseValue = 30;
+    intervalRandomFactor = 10 + Math.random() * 2;
+    intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+    interval = intervalBaseValue - intervalAngryMoodRemove;
+
+
     synth.set({
       envelope: {
         attack: attackValue,
@@ -134,81 +145,13 @@ function mouseClicked() {
   }
 }
 
-//Garrit flow field code
-function generateField() {
-  let field = [];
-  noiseSeed(Math.random() * 100);
-  for (let x = 0; x < maxCols; x++) {
-    field.push([]);
-    for (let y = 0; y < maxRows; y++) {
-      let pos = createVector(x * fieldSize, y * fieldSize);
-
-      // If we have a detected middle finger position
-      if (middleFingerPos) {
-        // Create a vector pointing from the current position to the middle finger
-        let attractor = p5.Vector.sub(middleFingerPos, pos).normalize();
-        field[x].push(attractor); // Set the flow field vector to point towards the middle finger
-      } else {
-        // Default to random noise if no middle finger is detected
-        let noiseValue = noise(x / divider, y / divider) * Math.PI * 2;
-        field[x].push(p5.Vector.fromAngle(noiseValue));
-      }
-    }
-  }
-  return field;
-}
-
-function generateAgents() {
-  for (let i = 0; i < 200; i++) {
-    let agent = new Agent(
-      Math.random() * 640, // Video width
-      Math.random() * 480, // Video height
-      4,
-      0.1
-    );
-    agents.push(agent);
-  }
-}
-
-function mouseClicked() {
-  if (gameStarted) {
-    gameStarted = false;
-  } else {
-    gameStarted = true;
-  }
-}
-
 function draw() {
   translate(video.width, 0); // Flytta koordinatsystemet till höger kanten av videon
   scale(-1, 1); // Invertera videon horisontellt
   image(video, 0, 0); // Rita videon
 
   if (gameStarted) {
-    //Garrit flow field + Gpt to know where to put it
-
-    // Get the current middle finger position
-    if (hands.length > 0) {
-      let hand = hands[0];
-      middleFingerPos = createVector(
-        hand.middle_finger_tip.x,
-        hand.middle_finger_tip.y
-      );
-    }
-
-    // Update the flow field based on the middle finger position
-    field = generateField(); // Regenerate the field on every frame
-
-    // Agents follow the updated field
-    for (let agent of agents) {
-      const x = Math.floor(agent.position.x / fieldSize);
-      const y = Math.floor(agent.position.y / fieldSize);
-      const desiredDirection = field[x][y];
-      agent.follow(desiredDirection);
-      agent.update();
-      agent.checkBorders();
-      agent.draw();
-    }
-
+  
     // Kontrollera om det finns händer detekterade
     if (hands.length > 0) {
       // Loopa genom alla händer som detekterats
@@ -248,12 +191,6 @@ function draw() {
       timer = 0;
     }
 
-    if(tiredTimer > interval*10){
-      if(Math.random() > 0.6){
-      tiredMood++;
-     }
-      tiredTimer = 0;
-    }
 
     if(soundTimer > soundInterval && soundInteraction === false){
       soundInteraction = true;
@@ -265,11 +202,13 @@ function draw() {
     //console.log(tiredMood);
 
     timer++;
-    tiredTimer++;
     interactionTimer++;
 
     soundTimer++;
-    //console.log(attackValue);
+    console.log(interval);
+
+
+    
   }
 }
 
@@ -278,7 +217,7 @@ function getHandsData(results) {
 }
 
 function playNote() {
-  /*let note1 = Math.floor(Math.random() * 6);
+  let note1 = Math.floor(Math.random() * 6);
 
   let note2 = note1 + 2;
   if (note2 == 7) {
@@ -292,32 +231,8 @@ function playNote() {
     note3 = 0;
   } else if (note3 == 8) {
     note3 = 1;
-  }*/
-
-  let angryProbability = 0;
-
-  // Only introduce angry notes when angryMood is 60 or above
-  if (angryMood >= 60) {
-    angryProbability = (angryMood - 60) / 60; // Scale from 0 (at 60 mood) to 1 (at 100 mood)
   }
 
-  // Pick notes based on mood
-  let note1, note2, note3;
-
-  // If in a happy mood
-  if (angryMood < 60) {
-    let baseNoteIndex = Math.floor(Math.random() * 6); // Get a base note index for a chord
-
-    // Assign notes with intervals of +2 (third) and +4 (fifth)
-    note1 = happyNotes[baseNoteIndex];
-    note2 = happyNotes[(baseNoteIndex + 2) % happyNotes.length]; // Wrap around the scale
-    note3 = happyNotes[(baseNoteIndex + 4) % happyNotes.length]; // Wrap around the scale
-  } else {
-    // For angry mood, keep random selection based on probability
-    note1 = pickNoteBasedOnMood(angryProbability);
-    note2 = pickNoteBasedOnMood(angryProbability);
-    note3 = pickNoteBasedOnMood(angryProbability);
-  }
 
   // Get the current time from Tone.js
   let now = Tone.now();
