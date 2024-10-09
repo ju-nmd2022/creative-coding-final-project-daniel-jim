@@ -13,7 +13,8 @@ let gameStarted = false;
 let tiredMood = 40 + (Math.random() * 20);
 
 // Starts Angry mood between 40-60
-let angryMood = 40 + (Math.random() * 20);
+//let angryMood = 40 + (Math.random() * 20);
+let angryMood = 1;
 
 //Off Variables (Make sound off timing)
 let angryOff1 = 0.01;
@@ -33,7 +34,7 @@ let releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
 let releaseValueAngryAdd; // Initialiseras senare
 let releaseValue; // Initialiseras senare
 
-// Distortion Value Min Max
+// Distortion Value Min Max GÖRA OM DENNA
 let minValueDistortion = 0.01;
 let maxValueDistortion = 0.3;
 let distortionValue =
@@ -66,7 +67,6 @@ let soundTimer = 0;
 //Width and height for camera and canvas
 widthSetup = (innerWidth / 4) * 3; // three fourths of screen
 heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
-
 
 //Flow field
 const fieldSize = 50;
@@ -123,21 +123,21 @@ function setup() {
 
 function soundValuesUpdate() {
   if (soundInteraction) {
-    // Attack - HAPPY/ANGRY
+    // Attack
     attackBaseValue = 0.05 + Math.random() * 0.05;
     attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
     attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
     // Direct operator for Attack Value
     attackValue = attackBaseValue + attackValueAngryAdd;
 
-    // Release - HAPPY/ANGRY
+    // Release
     releaseBaseValue = 0.11 + Math.random() * 0.08;
     releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
     releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
     // Direct operator for Release Value
     releaseValue = releaseBaseValue + releaseValueAngryAdd;
 
-    // Volume - HAPPY/ANGRY
+    // Volume
     volumeBaseValue = 0.2;
     volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
     volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;

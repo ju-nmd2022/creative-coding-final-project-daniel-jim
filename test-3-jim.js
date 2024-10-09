@@ -2,58 +2,76 @@ let handpose;
 let video;
 let hands = [];
 let synth;
-let tiredTimer = 0;
+let gainNode;
+let distortion; 
 let timer = 0;
 let interactionTimer = 10;
-let interval = 25;
 
 let gameStarted = false;
 
+// Starts tired mood between 40-60
+let tiredMood = 40 + (Math.random() * 20);
+
+// Starts Angry mood between 40-60
+//let angryMood = 40 + (Math.random() * 20);
+let angryMood = 1;
+
+//Off Variables (Make sound off timing)
+let angryOff1 = 0.01;
+let angryOff2 = 0.02;
 let tiredOff1 = 0;
 let tiredOff2 = 0;
 
-let tiredMood = 0;
+// Attack value (Start (without mood change)) 0.1 - 0.2
+let attackBaseValue = 0.05 + Math.random() * 0.05;
+let attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
+let attackValueAngryAdd; // Initialiseras senare
+let attackValue; // Initialiseras senare
 
-// Skala 1-100
-let angryMood = 10;
+// Release base value (0.1-0.2) + mood changes (0-0.4 depending on mood and random factor)
+let releaseBaseValue = 0.11 + Math.random() * 0.08;
+let releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
+let releaseValueAngryAdd; // Initialiseras senare
+let releaseValue; // Initialiseras senare
 
-let angryOff1 = 0;
-let angryOff2 = 0;
-
-// Chat GPT Formel
-// let attackValue = maxV alueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
-
-// Attack Value Min Max
-let minValueAttack = 0.05;
-let maxValueAttack = 0.3;
-let attackValue =
-  maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
-
-// Release Value Min Max
-let minValueRelease = 0.1;
-let maxValueRelease = 0.5;
-let releaseValue =
-  maxValueRelease -
-  ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
-
-// Distortion Value Min Max
+// Distortion Value Min Max GÖRA OM DENNA
 let minValueDistortion = 0.01;
 let maxValueDistortion = 0.3;
 let distortionValue =
   minValueDistortion +
   ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
 
-//const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
-const happyNotes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"]; // Harmonious notes
+
+//Volume
+let volumeBaseValue = 0.2;
+let volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
+let volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+let volumeValue = volumeBaseValue + volumeValueAngryAdd;
+
+// Interval
+let intervalBaseValue = 26;
+let intervalRandomFactor = 9 + Math.random() * 2;
+let intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+let intervalTiredMoodAdd = (tiredMood / 100) * intervalRandomFactor;
+let interval = intervalBaseValue - intervalAngryMoodRemove;
+
+// Notes arrays to use
+const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 const angryNotes = ["C4", "C#4", "D#4", "F#4", "G#4", "A#4", "B4"]; // Dissonant/random notes
 
-let gainNode;
-let distortion;
+//Sound Interaction (Adjust how often sound updates)
+let soundInteraction = true;
+let soundInterval = 30;
+let soundTimer = 0;
+
+//Width and height for camera and canvas
+widthSetup = (innerWidth / 4) * 3; // three fourths of screen
+heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
 
 //Flow field
 const fieldSize = 50;
-const maxCols = Math.ceil(640 / fieldSize); // Use the video width for the field size
-const maxRows = Math.ceil(480 / fieldSize); // Use the video height for the field size
+const maxCols = Math.ceil(widthSetup / fieldSize); // Use the video width for the field size
+const maxRows = Math.ceil(heightSetup / fieldSize); // Use the video height for the field size
 const divider = 4;
 let field = [];
 let agents = [];
@@ -64,9 +82,9 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(640, 480);
+  createCanvas(widthSetup, heightSetup);
   video = createCapture(VIDEO);
-  video.size(640, 480);
+  video.size(widthSetup, heightSetup);
   video.hide();
 
   handpose.detectStart(video, getHandsData);
@@ -75,8 +93,7 @@ function setup() {
   generateAgents();
 
   // Skapa GainNode
-  gainNode = new Tone.Gain(0.2).toDestination();
-
+  gainNode = new Tone.Gain(volumeValue).toDestination();  
   distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
 
   // Koppla synth till distortion
@@ -95,30 +112,67 @@ function setup() {
   if (angryMood < 70) {
     distortion.distortion = 0;
   }
+
+  // Update values for attack and release
+  attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+  attackValue = releaseBaseValue + attackValueAngryAdd;
+
+  releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+  releaseValue = releaseBaseValue + releaseValueAngryAdd;
 }
 
-function angryMoodUpdates() {
-  //Synth Settings
-  attackValue =
-    maxValueAttack - ((angryMood - 1) / 99) * (maxValueAttack - minValueAttack);
-  releaseValue =
-    maxValueRelease -
-    ((angryMood - 1) / 99) * (maxValueRelease - minValueRelease);
-  synth.set({
-    envelope: {
-      attack: attackValue,
-      release: releaseValue,
-    },
-  });
+function soundValuesUpdate() {
+  if (soundInteraction) {
+    // Attack
+    attackBaseValue = 0.05 + Math.random() * 0.05;
+    attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
+    attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+    // Direct operator for Attack Value
+    attackValue = attackBaseValue + attackValueAngryAdd;
 
-  //Distortion
-  if (angryMood > 69) {
-    distortionValue =
-      minValueDistortion +
-      ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
-    distortion.distortion = distortionValue;
-  } else {
-    distortion.distortion = 0;
+    // Release
+    releaseBaseValue = 0.11 + Math.random() * 0.08;
+    releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
+    releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
+    // Direct operator for Release Value
+    releaseValue = releaseBaseValue + releaseValueAngryAdd;
+
+    // Volume
+    volumeBaseValue = 0.2;
+    volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
+    volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+    // Direct operator for Volume Value
+    volumeValue = volumeBaseValue + volumeValueAngryAdd;
+
+    //Interval
+    intervalBaseValue = 26;
+    intervalRandomFactor = 9 + Math.random() * 2;
+    intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
+    intervalTiredMoodAdd = (tiredMood / 100) * intervalRandomFactor;
+    interval = intervalBaseValue - intervalAngryMoodRemove + intervalTiredMoodAdd;
+
+    //Distortion - HAPPY/ANGRY
+    if (angryMood > 70) {
+      // More or little less distortion
+      if(Math.random() > 0.5){
+        distortion.distortion = Math.random() * 0.2;
+      } else{
+        distortion.distortion = Math.random() * 0.1;
+      }
+    } else {
+      distortion.distortion = 0;
+    }
+
+    //Update Synth
+    synth.set({
+      envelope: {
+        attack: attackValue,
+        release: releaseValue,
+      },
+    });
+
+    //Interaction (Updates sounds) Variable false to restart counter for update
+    soundInteraction = false;
   }
 }
 
@@ -149,8 +203,8 @@ function generateField() {
 function generateAgents() {
   for (let i = 0; i < 200; i++) {
     let agent = new Agent(
-      Math.random() * 640, // Video width
-      Math.random() * 480, // Video height
+      Math.random() * widthSetup, // Video width
+      Math.random() * heightSetup, // Video height
       4,
       0.1
     );
@@ -159,10 +213,10 @@ function generateAgents() {
 }
 
 function mouseClicked() {
-  if (gameStarted) {
+  if(gameStarted){
     gameStarted = false;
-  } else {
-    gameStarted = true;
+  }else{
+  gameStarted = true; 
   }
 }
 
@@ -171,11 +225,11 @@ function draw() {
   scale(-1, 1); // Invertera videon horisontellt
   image(video, 0, 0); // Rita videon
 
+  //Kolla om det ska starta eller ej
   if (gameStarted) {
-    //Garrit flow field + Gpt to know where to put it
 
-    // Get the current middle finger position
-    if (hands.length > 0) {
+     // Get the current middle finger position
+     if (hands.length > 0) {
       let hand = hands[0];
       middleFingerPos = createVector(
         hand.middle_finger_tip.x,
@@ -183,23 +237,32 @@ function draw() {
       );
     }
 
-    // Update the flow field based on the middle finger position
-    field = generateField(); // Regenerate the field on every frame
+     // Update the flow field based on the middle finger position
+     field = generateField(); // Regenerate the field on every frame
 
-    // Agents follow the updated field
-    for (let agent of agents) {
+     // Agents follow the updated field
+     for (let agent of agents) {
       const x = Math.floor(agent.position.x / fieldSize);
       const y = Math.floor(agent.position.y / fieldSize);
-      const desiredDirection = field[x][y];
-      agent.follow(desiredDirection);
+    
+      // Kontrollera att x och y ligger inom fältets gränser
+      if (x >= 0 && x < maxCols && y >= 0 && y < maxRows) {
+        const desiredDirection = field[x][y];
+        agent.follow(desiredDirection);
+      } else {
+        // Hantera fall där agenten är utanför fältet (t.ex. ge en standard riktning)
+        const defaultDirection = createVector(0, 0); // Exempelvis rakt nedåt
+        agent.follow(defaultDirection);
+      }
+    
       agent.update();
       agent.checkBorders();
       agent.draw();
     }
-
-    // Kontrollera om det finns händer detekterade
+ 
+  
+    //Hand detector här inne görs poser
     if (hands.length > 0) {
-      // Loopa genom alla händer som detekterats
       for (let i = 0; i < hands.length; i++) {
         let hand = hands[i];
         let indexFinger = hand.index_finger_tip;
@@ -216,56 +279,68 @@ function draw() {
         ellipse(pinky.x, pinky.y, 10);
 
         // Om pinky är i ett visst område, öka angryMood
-        if (
-          pinky.x > 400 &&
-          pinky.y < 100 &&
-          angryMood < 100 &&
-          timer > interval
-        ) {
-          angryMood++;
-          interval = interval - 0.08;
-          angryOff1 = angryOff1 + 0.0004;
-          angryOff2 = angryOff2 + 0.0006;
+        if(pinky.x > 400 && pinky.y < 100 && angryMood < 100 && timer > interval){
+          angryMood = angryMood + (Math.random() * 0.5);
         }
 
         // Kontrollera om middle finger är uppsträckt för att sätta angryMood till 100
-        if (
-          middleFinger.y < thumb.y - 30 &&
-          middleFinger.y < indexFinger.y - 50 &&
-          middleFinger.y < ringFinger.y - 50 &&
-          middleFinger.y < pinky.y - 50 &&
-          interactionTimer > 10 &&
-          angryMood < 100
-        ) {
-          angryMood = angryMood + Math.random() * 5;
-          if (angryMood > 100) {
-            angryMood = 100;
-          }
+        if (middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50 && interactionTimer > 10 && angryMood < 100) {
+          angryMood = angryMood + (Math.random() * 8)
           interactionTimer = 0;
         }
       }
     }
 
+    // Timers & Counters
+
+    //Play sound timer
     if (timer > interval) {
+      //Constantly makes the system more tired for the longer it plays
+      if(tiredMood < 100){
+      tiredMood = tiredMood + (Math.random() * 0.5);
+    }
+
+      //Play notes
       playNote();
+
+      //reset timer
       timer = 0;
     }
 
-    if (tiredTimer > interval * 10) {
-      if (Math.random() > 0.6) {
-        tiredMood++;
-      }
-
-      tiredTimer = 0;
+    //Update sound values timer
+    if(soundTimer > soundInterval && soundInteraction === false){
+      soundInteraction = true;
+      soundTimer = 0;
     }
 
-    angryMoodUpdates();
-    console.log(angryMood);
-    console.log(tiredMood);
+    //Update values with function(s)
+    soundValuesUpdate();
 
+    //Increase values for timers
     timer++;
-    tiredTimer++;
     interactionTimer++;
+    soundTimer++;
+
+    //Console Logs
+    console.log("Angry Mood Value: " + angryMood);
+    console.log("Tired Mood Value: " + tiredMood);
+    console.log("Release Value: " + releaseValue);
+    console.log("Attack Value: " + attackValue);
+    console.log("Interval: " + interval);
+    console.log("Volume Value: " + volumeValue);
+
+    //Randoms changes to mood (Not controllable by user)
+    angryMood = angryMood + ((Math.random()* 0.3) - 0.15);
+    tiredMood = tiredMood + ((Math.random()* 0.3) - 0.15);
+
+    //Makes sure the values doesnt go far above 100 (Can mess up some values)
+    if(angryMood > 100){
+      angryMood = 100;
+    }
+    if(tiredMood > 100){
+      tiredMood = 100;
+    }
+
   }
 }
 
@@ -273,8 +348,9 @@ function getHandsData(results) {
   hands = results;
 }
 
+// Play the synth notes function
 function playNote() {
-  /*let note1 = Math.floor(Math.random() * 6);
+  let note1 = Math.floor(Math.random() * 6);
 
   let note2 = note1 + 2;
   if (note2 == 7) {
@@ -288,39 +364,37 @@ function playNote() {
     note3 = 0;
   } else if (note3 == 8) {
     note3 = 1;
-  }*/
-
-  let angryProbability = 0;
-
-  // Only introduce angry notes when angryMood is 60 or above
-  if (angryMood >= 60) {
-    angryProbability = (angryMood - 60) / 60; // Scale from 0 (at 60 mood) to 1 (at 100 mood)
-  }
-
-  // Pick notes based on mood
-  let note1, note2, note3;
-
-  // If in a happy mood
-  if (angryMood < 60) {
-    let baseNoteIndex = Math.floor(Math.random() * 6); // Get a base note index for a chord
-
-    // Assign notes with intervals of +2 (third) and +4 (fifth)
-    note1 = happyNotes[baseNoteIndex];
-    note2 = happyNotes[(baseNoteIndex + 2) % happyNotes.length]; // Wrap around the scale
-    note3 = happyNotes[(baseNoteIndex + 4) % happyNotes.length]; // Wrap around the scale
-  } else {
-    // For angry mood, keep random selection based on probability
-    note1 = pickNoteBasedOnMood(angryProbability);
-    note2 = pickNoteBasedOnMood(angryProbability);
-    note3 = pickNoteBasedOnMood(angryProbability);
   }
 
   // Get the current time from Tone.js
   let now = Tone.now();
-  // Play the notes with a small delay between each
-  synth.triggerAttackRelease(note1, "8n", now); // Play immediately
-  synth.triggerAttackRelease(note2, "8n", now + angryOff1 + tiredOff1);
-  synth.triggerAttackRelease(note3, "8n", now + angryOff2 + tiredOff2);
+  // Spela tre noter med små fördröjningar mellan
+
+  if(angryMood > 75 && Math.random() > 0.5){
+    let randomValue1 = Math.random();
+    let randomValue2 = Math.random();
+    let randomValue3 = Math.random();
+  
+    if(randomValue1 > 0.5){
+      synth.triggerAttackRelease(angryNotes[note1], "8n", now); 
+    } else{
+      synth.triggerAttackRelease(notes[note1], "8n", now); 
+    }
+    if(randomValue2 > 0.5){
+      synth.triggerAttackRelease(angryNotes[note2], "8n", now + angryOff1 + tiredOff1); 
+    } else{
+      synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1);
+    }
+    if(randomValue3 > 0.5){
+      synth.triggerAttackRelease(angryNotes[note3], "8n", now + angryOff2 + tiredOff2); 
+    } else{
+      synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
+    }
+} else {
+  synth.triggerAttackRelease(notes[note1], "8n", now); 
+  synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1); 
+  synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
+}
 }
 
 //Garrit flow field
@@ -356,16 +430,16 @@ class Agent {
 
   checkBorders() {
     if (this.position.x < 0) {
-      this.position.x = 640;
-      this.lastPosition.x = 640;
-    } else if (this.position.x > 640) {
+      this.position.x = widthSetup;
+      this.lastPosition.x = widthSetup;
+    } else if (this.position.x > widthSetup) {
       this.position.x = 0;
       this.lastPosition.x = 0;
     }
     if (this.position.y < 0) {
-      this.position.y = 480;
-      this.lastPosition.y = 480;
-    } else if (this.position.y > 480) {
+      this.position.y = heightSetup;
+      this.lastPosition.y = heightSetup;
+    } else if (this.position.y > heightSetup) {
       this.position.y = 0;
       this.lastPosition.y = 0;
     }
@@ -389,20 +463,5 @@ class Agent {
       this.position.y
     );
     pop();
-  }
-}
-
-//function to pick a note based on mood
-function pickNoteBasedOnMood(angryProbability) {
-  // Random value between 0 and 1
-  let rand = Math.random();
-
-  // If the random value is less than the angryProbability, choose from angryNotes, otherwise happyNotes
-  if (rand < angryProbability) {
-    // Pick random note from angry set
-    return angryNotes[Math.floor(Math.random() * angryNotes.length)];
-  } else {
-    // Pick random note from happy set
-    return happyNotes[Math.floor(Math.random() * happyNotes.length)];
   }
 }
