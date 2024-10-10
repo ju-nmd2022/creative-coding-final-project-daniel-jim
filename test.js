@@ -363,14 +363,16 @@ function draw() {
     }
 
     //Mic mood changes (Had to be here, since the "high noice" might be missed if only checked in intervals.)
-    if(micVolume > -15){
-      if(Math.random() > 0.6){
+    if(micVolume > -15 && interactionTimer > 10){
+      let randomCheck = Math.random();
+      if(randomCheck >= 0.6 && angryMood < 100){
         angryMood = angryMood + (0.5*Math.random());
         console.log("Angrymood increase because of sound!")
-      } else{
-        tiredMood = tiredMood + (0.5*Math.random());
-        console.log("Tiredmood increase because of sound!")
+      } else if (randomCheck < 0.6 && tiredMood > 1) {
+        tiredMood = tiredMood - (0.5*Math.random());
+        console.log("Tiredmood decreased because of sound!")
       }
+      interactionTimer = 0;
     }
 
     // Timers & Counters
