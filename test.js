@@ -8,18 +8,31 @@ let distortion;
 let timer = 0;
 let interactionTimer = 10;
 
+
+//Get colorpicker positions
+let color1;
+let color2;
+let color1X;
+let color1Y;
+let color2X;
+let color2Y;
+
+//Mic
+let mic;
+let micVolume;
+let meter;
+
+let testVariable = 0;
+
 let gameStarted = false;
 
 let note1 = 0
 let note2 = 2;
 let note3 = 4;
 
-// Moods (random 20-30 starting point)
-//let tiredMood = 20 + (Math.random() * 10);
-let tiredMood = 65;
-
-//let angryMood = 40 + (Math.random() * 20);
-let angryMood = 50;
+// Moods (random starting point)
+let tiredMood = 20 + (Math.random() * 10);
+let angryMood = 40 + (Math.random() * 20);
 
 //Off Variables (Make sound off timing)
 let tiredOffTiming1 = 0;
@@ -94,6 +107,10 @@ function setup() {
 
   handpose.detectStart(video, getHandsData);
 
+  mic = new Tone.UserMedia();
+  meter = new Tone.Meter(); 
+  mic.connect(meter); 
+
   field = generateField();
   generateAgents();
 
@@ -118,12 +135,16 @@ function setup() {
     distortion.distortion = 0;
   }
 
-  // Update values for attack and release
-  attackValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
-  attackValue = releaseBaseValue + attackValueAngryAdd;
+  let colorRandom1 = Math.random();
+let colorRandom2 = Math.random();
 
-  releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
-  releaseValue = releaseBaseValue + releaseValueAngryAdd;
+//Get colorpicker positions
+color1X = video.width - (video.width * colorRandom1);
+color1Y = video.height - (video.height * colorRandom1);
+
+color2X = video.width - (video.width * colorRandom2);
+color2Y = video.height - (video.height * colorRandom2);
+
 }
 
 function soundValuesUpdate() {
@@ -186,6 +207,8 @@ function soundValuesUpdate() {
       },
     });
 
+    
+
     //Interaction (Updates sounds) Variable false to restart counter for update
     soundInteraction = false;
   }
@@ -233,6 +256,7 @@ function mouseClicked() {
   }else{
   gameStarted = true; 
   }
+  mic.open();
 }
 
 function draw() {
@@ -242,6 +266,28 @@ function draw() {
 
   //Kolla om det ska starta eller ej
   if (gameStarted) {
+    
+  
+  // Hämta färgvärdet (RGBA) vid mitten av videon
+  color1 = video.get(color1X, color1Y);
+  color2 = video.get(color2X, color2Y);
+
+  // Extrahera RGB-värden
+  let r1 = color1[0];
+  let g1 = color1[1];
+  let b1 = color1[2];
+
+  let r2 = color2[0];
+  let g2 = color2[1];
+  let b2 = color2[2];
+
+  push();
+  noStroke();
+  fill(r1, g1, b1);
+  rect(10, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
+  fill(r2, g2, b2);
+  rect(video.width - 60, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
+  pop();
 
      // Get the current middle finger position
      if (hands.length > 0) {
@@ -297,11 +343,33 @@ function draw() {
           angryMood = angryMood + (Math.random() * 0.5);
         }
 
-        // Kontrollera om middle finger är uppsträckt för att sätta angryMood till 100
-        if (middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50 && interactionTimer > 10 && angryMood < 100) {
+        let middleFingerPose = middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
+        //Pose "middle finger" to make it more angry fast
+        if (middleFingerPose && interactionTimer > 10 && angryMood < 100) {
           angryMood = angryMood + (Math.random() * 8)
           interactionTimer = 0;
+          console.log("Angry mood increased because of middlefinger-pose!");
         }
+
+        //pose "peace" to make it happier
+        let peacePoseIndex = indexFinger.y < thumb.y - 30 && indexFinger.y < ringFinger.y - 50 && indexFinger.y < pinky.y - 50;
+        let peacePoseMiddle = middleFinger.y < thumb.y - 30 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
+        if (peacePoseIndex && peacePoseMiddle && interactionTimer > 10 && angryMood > 4) {
+          angryMood -= Math.random() * 4;
+          interactionTimer = 0;
+          console.log("Angry mood decreased because of peace-pose!");
+        }
+      }
+    }
+
+    //Mic mood changes (Had to be here, since the "high noice" might be missed if only checked in intervals.)
+    if(micVolume > -15){
+      if(Math.random() > 0.6){
+        angryMood = angryMood + (0.5*Math.random());
+        console.log("Angrymood increase because of sound!")
+      } else{
+        tiredMood = tiredMood + (0.5*Math.random());
+        console.log("Tiredmood increase because of sound!")
       }
     }
 
@@ -319,7 +387,7 @@ function draw() {
       timer = 0;
     }
 
-    //Update sound values timer
+    //Update sound values based on the current mood, and not constantly
     if(soundTimer > soundInterval && soundInteraction === false){
       soundInteraction = true;
       soundTimer = 0;
@@ -333,13 +401,8 @@ function draw() {
     interactionTimer++;
     soundTimer++;
 
-    //Console Logs
-    console.log("Angry Mood Value: " + angryMood);
-    console.log("Tired Mood Value: " + tiredMood);
-    console.log("Release Value: " + releaseValue);
-    console.log("Attack Value: " + attackValue);
-    console.log("Interval: " + interval);
-    console.log("Volume Value: " + volumeValue);
+    //Mic volume level
+    micVolume = meter.getValue();
 
     //Randoms changes to mood (Not controllable by user)
     angryMood = angryMood + ((Math.random()* 0.3) - 0.15);
