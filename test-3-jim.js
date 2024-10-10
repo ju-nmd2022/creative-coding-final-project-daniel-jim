@@ -3,14 +3,13 @@ let video;
 let hands = [];
 let synth;
 let gainNode;
-let distortion; 
+let distortion;
 let timer = 0;
 let interactionTimer = 10;
-
 let gameStarted = false;
 
 // Starts tired mood between 40-60
-let tiredMood = 40 + (Math.random() * 20);
+let tiredMood = 40 + Math.random() * 20;
 
 // Starts Angry mood between 40-60
 //let angryMood = 40 + (Math.random() * 20);
@@ -41,11 +40,10 @@ let distortionValue =
   minValueDistortion +
   ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
 
-
 //Volume
 let volumeBaseValue = 0.2;
 let volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
-let volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+let volumeValueAngryAdd = (angryMood / 100) * volumeAngryRandomFactor;
 let volumeValue = volumeBaseValue + volumeValueAngryAdd;
 
 // Interval
@@ -66,7 +64,7 @@ let soundTimer = 0;
 
 //Width and height for camera and canvas
 widthSetup = (innerWidth / 4) * 3; // three fourths of screen
-heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
+heightSetup = (widthSetup / 3) * 2; //two thirds of width Setup (3:2 ratio)
 
 //Flow field
 const fieldSize = 50;
@@ -93,7 +91,7 @@ function setup() {
   generateAgents();
 
   // Skapa GainNode
-  gainNode = new Tone.Gain(volumeValue).toDestination();  
+  gainNode = new Tone.Gain(volumeValue).toDestination();
   distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
 
   // Koppla synth till distortion
@@ -140,7 +138,7 @@ function soundValuesUpdate() {
     // Volume
     volumeBaseValue = 0.2;
     volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
-    volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+    volumeValueAngryAdd = (angryMood / 100) * volumeAngryRandomFactor;
     // Direct operator for Volume Value
     volumeValue = volumeBaseValue + volumeValueAngryAdd;
 
@@ -149,14 +147,15 @@ function soundValuesUpdate() {
     intervalRandomFactor = 9 + Math.random() * 2;
     intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
     intervalTiredMoodAdd = (tiredMood / 100) * intervalRandomFactor;
-    interval = intervalBaseValue - intervalAngryMoodRemove + intervalTiredMoodAdd;
+    interval =
+      intervalBaseValue - intervalAngryMoodRemove + intervalTiredMoodAdd;
 
     //Distortion - HAPPY/ANGRY
     if (angryMood > 70) {
       // More or little less distortion
-      if(Math.random() > 0.5){
+      if (Math.random() > 0.5) {
         distortion.distortion = Math.random() * 0.2;
-      } else{
+      } else {
         distortion.distortion = Math.random() * 0.1;
       }
     } else {
@@ -213,12 +212,14 @@ function generateAgents() {
 }
 
 function mouseClicked() {
-  if(gameStarted){
+  if (gameStarted) {
     gameStarted = false;
-  }else{
-  gameStarted = true; 
+  } else {
+    gameStarted = true;
   }
 }
+
+let flowFieldCounter = 0; // Counter for flow field generation
 
 function draw() {
   translate(video.width, 0); // Flytta koordinatsystemet till höger kanten av videon
@@ -227,40 +228,51 @@ function draw() {
 
   //Kolla om det ska starta eller ej
   if (gameStarted) {
-
-     // Get the current middle finger position
-     if (hands.length > 0) {
+    let offsetX = 80;
+    let offsetY = -100;
+    // Get the current middle finger position
+    if (hands.length > 0) {
       let hand = hands[0];
       middleFingerPos = createVector(
-        hand.middle_finger_tip.x,
-        hand.middle_finger_tip.y
+        hand.middle_finger_tip.x + offsetX,
+        hand.middle_finger_tip.y + offsetY
       );
     }
 
-     // Update the flow field based on the middle finger position
-     field = generateField(); // Regenerate the field on every frame
+    // Increment the flow field counter
+    flowFieldCounter++;
 
-     // Agents follow the updated field
-     for (let agent of agents) {
+    shakeIntensity = (angryMood / 100) * 10; // Shake depending on angrmood
+
+    // Update the flow field based on the middle finger position every 6 intervals
+    if (flowFieldCounter >= 6) {
+      field = generateField(); // Regenerate the field
+      flowFieldCounter = 0; // Reset the counter
+    }
+
+    // Agents follow the updated field
+    for (let agent of agents) {
       const x = Math.floor(agent.position.x / fieldSize);
       const y = Math.floor(agent.position.y / fieldSize);
-    
+
       // Kontrollera att x och y ligger inom fältets gränser
       if (x >= 0 && x < maxCols && y >= 0 && y < maxRows) {
         const desiredDirection = field[x][y];
+        // Add randomness to the desired direction
+        let randomAngle = (Math.random() - 0.55) * 0.55; // Random angle between -0.25 and 0.25 radians
+        desiredDirection.rotate(randomAngle); // Rotate the direction vector
         agent.follow(desiredDirection);
       } else {
         // Hantera fall där agenten är utanför fältet (t.ex. ge en standard riktning)
         const defaultDirection = createVector(0, 0); // Exempelvis rakt nedåt
         agent.follow(defaultDirection);
       }
-    
+
       agent.update();
       agent.checkBorders();
       agent.draw();
     }
- 
-  
+
     //Hand detector här inne görs poser
     if (hands.length > 0) {
       for (let i = 0; i < hands.length; i++) {
@@ -279,13 +291,25 @@ function draw() {
         ellipse(pinky.x, pinky.y, 10);
 
         // Om pinky är i ett visst område, öka angryMood
-        if(pinky.x > 400 && pinky.y < 100 && angryMood < 100 && timer > interval){
-          angryMood = angryMood + (Math.random() * 0.5);
+        if (
+          pinky.x > 400 &&
+          pinky.y < 100 &&
+          angryMood < 100 &&
+          timer > interval
+        ) {
+          angryMood = angryMood + Math.random() * 0.5;
         }
 
         // Kontrollera om middle finger är uppsträckt för att sätta angryMood till 100
-        if (middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50 && interactionTimer > 10 && angryMood < 100) {
-          angryMood = angryMood + (Math.random() * 8)
+        if (
+          middleFinger.y < thumb.y - 30 &&
+          middleFinger.y < indexFinger.y - 50 &&
+          middleFinger.y < ringFinger.y - 50 &&
+          middleFinger.y < pinky.y - 50 &&
+          interactionTimer > 10 &&
+          angryMood < 100
+        ) {
+          angryMood = angryMood + Math.random() * 8;
           interactionTimer = 0;
         }
       }
@@ -296,9 +320,9 @@ function draw() {
     //Play sound timer
     if (timer > interval) {
       //Constantly makes the system more tired for the longer it plays
-      if(tiredMood < 100){
-      tiredMood = tiredMood + (Math.random() * 0.5);
-    }
+      if (tiredMood < 100) {
+        tiredMood = tiredMood + Math.random() * 0.5;
+      }
 
       //Play notes
       playNote();
@@ -308,7 +332,7 @@ function draw() {
     }
 
     //Update sound values timer
-    if(soundTimer > soundInterval && soundInteraction === false){
+    if (soundTimer > soundInterval && soundInteraction === false) {
       soundInteraction = true;
       soundTimer = 0;
     }
@@ -330,17 +354,16 @@ function draw() {
     console.log("Volume Value: " + volumeValue);
 
     //Randoms changes to mood (Not controllable by user)
-    angryMood = angryMood + ((Math.random()* 0.3) - 0.15);
-    tiredMood = tiredMood + ((Math.random()* 0.3) - 0.15);
+    angryMood = angryMood + (Math.random() * 0.3 - 0.15);
+    tiredMood = tiredMood + (Math.random() * 0.3 - 0.15);
 
     //Makes sure the values doesnt go far above 100 (Can mess up some values)
-    if(angryMood > 100){
+    if (angryMood > 100) {
       angryMood = 100;
     }
-    if(tiredMood > 100){
+    if (tiredMood > 100) {
       tiredMood = 100;
     }
-
   }
 }
 
@@ -370,31 +393,47 @@ function playNote() {
   let now = Tone.now();
   // Spela tre noter med små fördröjningar mellan
 
-  if(angryMood > 75 && Math.random() > 0.5){
+  if (angryMood > 75 && Math.random() > 0.5) {
     let randomValue1 = Math.random();
     let randomValue2 = Math.random();
     let randomValue3 = Math.random();
-  
-    if(randomValue1 > 0.5){
-      synth.triggerAttackRelease(angryNotes[note1], "8n", now); 
-    } else{
-      synth.triggerAttackRelease(notes[note1], "8n", now); 
+
+    if (randomValue1 > 0.5) {
+      synth.triggerAttackRelease(angryNotes[note1], "8n", now);
+    } else {
+      synth.triggerAttackRelease(notes[note1], "8n", now);
     }
-    if(randomValue2 > 0.5){
-      synth.triggerAttackRelease(angryNotes[note2], "8n", now + angryOff1 + tiredOff1); 
-    } else{
-      synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1);
+    if (randomValue2 > 0.5) {
+      synth.triggerAttackRelease(
+        angryNotes[note2],
+        "8n",
+        now + angryOff1 + tiredOff1
+      );
+    } else {
+      synth.triggerAttackRelease(
+        notes[note2],
+        "8n",
+        now + angryOff1 + tiredOff1
+      );
     }
-    if(randomValue3 > 0.5){
-      synth.triggerAttackRelease(angryNotes[note3], "8n", now + angryOff2 + tiredOff2); 
-    } else{
-      synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
+    if (randomValue3 > 0.5) {
+      synth.triggerAttackRelease(
+        angryNotes[note3],
+        "8n",
+        now + angryOff2 + tiredOff2
+      );
+    } else {
+      synth.triggerAttackRelease(
+        notes[note3],
+        "8n",
+        now + angryOff2 + tiredOff2
+      );
     }
-} else {
-  synth.triggerAttackRelease(notes[note1], "8n", now); 
-  synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1); 
-  synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2); 
-}
+  } else {
+    synth.triggerAttackRelease(notes[note1], "8n", now);
+    synth.triggerAttackRelease(notes[note2], "8n", now + angryOff1 + tiredOff1);
+    synth.triggerAttackRelease(notes[note3], "8n", now + angryOff2 + tiredOff2);
+  }
 }
 
 //Garrit flow field
@@ -426,6 +465,12 @@ class Agent {
     this.velocity.limit(this.maxSpeed);
     this.position.add(this.velocity);
     this.acceleration.mult(0);
+    // Add random shake to the position based on the shakeIntensity (some gpt)
+    let shakeX = (Math.random() - 0.5) * shakeIntensity; // Shake in X direction
+    let shakeY = (Math.random() - 0.5) * shakeIntensity; // Shake in Y direction
+    this.position.add(this.velocity);
+    this.position.x += shakeX; // Apply the shake to X
+    this.position.y += shakeY; // Apply the shake to Y
   }
 
   checkBorders() {
@@ -454,7 +499,12 @@ class Agent {
       );
     }
     push();
-    stroke(255, 0, 0, 100);
+    let moodColor = lerpColor(
+      color(0, 0, 255),
+      color(255, 0, 0),
+      angryMood / 100
+    );
+    stroke(moodColor);
     strokeWeight(2);
     line(
       this.lastPosition.x,
