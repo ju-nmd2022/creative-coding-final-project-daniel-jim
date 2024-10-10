@@ -200,7 +200,7 @@ function generateField() {
 }
 
 function generateAgents() {
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < widthSetup * 0.2; i++) {
     let agent = new Agent(
       Math.random() * widthSetup, // Video width
       Math.random() * heightSetup, // Video height
@@ -259,7 +259,7 @@ function draw() {
       if (x >= 0 && x < maxCols && y >= 0 && y < maxRows) {
         const desiredDirection = field[x][y];
         // Add randomness to the desired direction
-        let randomAngle = (Math.random() - 0.55) * 0.55; // Random angle between -0.25 and 0.25 radians
+        let randomAngle = (Math.random() - 0.55) * 0.55; // Random angle
         desiredDirection.rotate(randomAngle); // Rotate the direction vector
         agent.follow(desiredDirection);
       } else {
@@ -267,6 +267,8 @@ function draw() {
         const defaultDirection = createVector(0, 0); // Exempelvis rakt nedåt
         agent.follow(defaultDirection);
       }
+
+     
 
       agent.update();
       agent.checkBorders();

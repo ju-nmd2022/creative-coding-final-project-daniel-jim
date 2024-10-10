@@ -8,7 +8,6 @@ let distortion;
 let timer = 0;
 let interactionTimer = 10;
 
-
 //Get colorpicker positions
 let color1;
 let color2;
@@ -21,8 +20,6 @@ let color2Y;
 let mic;
 let micVolume;
 let meter;
-
-let testVariable = 0;
 
 let gameStarted = false;
 
@@ -94,6 +91,8 @@ const divider = 4;
 let field = [];
 let agents = [];
 let middleFingerPos;
+
+let flowFieldCounter = 0; // Counter for flow field generation
 
 function preload() {
   handpose = ml5.handPose();
@@ -207,8 +206,6 @@ function soundValuesUpdate() {
       },
     });
 
-    
-
     //Interaction (Updates sounds) Variable false to restart counter for update
     soundInteraction = false;
   }
@@ -239,7 +236,7 @@ function generateField() {
 }
 
 function generateAgents() {
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < widthSetup * 0.2; i++) {
     let agent = new Agent(
       Math.random() * widthSetup, // Video width
       Math.random() * heightSetup, // Video height
@@ -267,7 +264,6 @@ function draw() {
   //Kolla om det ska starta eller ej
   if (gameStarted) {
     
-  
   // Hämta färgvärdet (RGBA) vid mitten av videon
   color1 = video.get(color1X, color1Y);
   color2 = video.get(color2X, color2Y);
@@ -289,17 +285,28 @@ function draw() {
   rect(video.width - 60, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
   pop();
 
-     // Get the current middle finger position
-     if (hands.length > 0) {
+    ///FIXAAAAAAAAAA DENNA
+    //FIXA FIXA FIXA
+    //FIXA RANDOM!
+    let offsetX = 80;
+    let offsetY = -100;
+    // Get the current middle finger position
+    if (hands.length > 0) {
       let hand = hands[0];
       middleFingerPos = createVector(
-        hand.middle_finger_tip.x,
-        hand.middle_finger_tip.y
+        hand.middle_finger_tip.x + offsetX,
+        hand.middle_finger_tip.y + offsetY
       );
     }
 
-     // Update the flow field based on the middle finger position
-     field = generateField(); // Regenerate the field on every frame
+    flowFieldCounter++;
+    shakeIntensity = (angryMood / 100) * 10; // Shake depending on angrmood
+
+    if (flowFieldCounter >= 6) {
+      field = generateField(); // Regenerate the field
+      flowFieldCounter = 0; // Reset the counter
+    }
+
 
      // Agents follow the updated field
      for (let agent of agents) {
@@ -309,6 +316,9 @@ function draw() {
       // Kontrollera att x och y ligger inom fältets gränser
       if (x >= 0 && x < maxCols && y >= 0 && y < maxRows) {
         const desiredDirection = field[x][y];
+        // Add randomness to the desired direction
+        let randomAngle = (Math.random() - 0.55) * 0.55; // Random angle
+        desiredDirection.rotate(randomAngle); // Rotate the direction vector
         agent.follow(desiredDirection);
       } else {
         // Hantera fall där agenten är utanför fältet (t.ex. ge en standard riktning)
@@ -549,7 +559,14 @@ class Agent {
     this.velocity.limit(this.maxSpeed);
     this.position.add(this.velocity);
     this.acceleration.mult(0);
+    // Add random shake to the position based on the shakeIntensity (some gpt)
+    let shakeX = (Math.random() - 0.5) * shakeIntensity; // Shake in X direction
+    let shakeY = (Math.random() - 0.5) * shakeIntensity; // Shake in Y direction
+    this.position.add(this.velocity);
+    this.position.x += shakeX; // Apply the shake to X
+    this.position.y += shakeY; // Apply the shake to Y
   }
+
 
   checkBorders() {
     if (this.position.x < 0) {
@@ -577,7 +594,12 @@ class Agent {
       );
     }
     push();
-    stroke(255, 0, 0, 100);
+    let moodColor = lerpColor(
+      color(0, 0, 255),
+      color(255, 0, 0),
+      angryMood / 100
+    );
+    stroke(moodColor);
     strokeWeight(2);
     line(
       this.lastPosition.x,
