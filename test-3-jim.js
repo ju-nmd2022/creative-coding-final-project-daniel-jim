@@ -4,7 +4,12 @@ let video;
 let hands = [];
 let synth;
 let gainNode;
+<<<<<<< HEAD
 let distortion; 
+=======
+let distortion;
+let reverb;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 let timer = 0;
 let interactionTimer = 10;
 
@@ -23,13 +28,22 @@ let meter;
 
 let gameStarted = false;
 
+<<<<<<< HEAD
 let note1 = 0
+=======
+let note1 = 0;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 let note2 = 2;
 let note3 = 4;
 
 // Moods (random starting point)
+<<<<<<< HEAD
 let tiredMood = 20 + (Math.random() * 10);
 let angryMood = 40 + (Math.random() * 20);
+=======
+let tiredMood = 20 + Math.random() * 10;
+let angryMood = 40 + Math.random() * 20;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
 //Off Variables (Make sound off timing)
 let tiredOffTiming1 = 0;
@@ -46,7 +60,10 @@ let releaseBaseValue = 0.11 + Math.random() * 0.08;
 let releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
 let releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
 let releaseValue = releaseBaseValue + releaseValueAngryAdd;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
 // Distortion Value Min Max GÖRA OM DENNA
 let minValueDistortion = 0.01;
@@ -55,7 +72,10 @@ let distortionValue =
   minValueDistortion +
   ((angryMood - 1) / 99) * (maxValueDistortion - minValueDistortion);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 //Volume values
 let volumeBaseValue = 0.2;
 let volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
@@ -70,7 +90,26 @@ let intervalTiredMoodAdd = (tiredMood / 100) * intervalRandomFactor;
 let interval = intervalBaseValue - intervalAngryMoodRemove;
 
 // Notes arrays to use
+<<<<<<< HEAD
 const happyNotes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", "F5", "G5", "A5", "B5"];
+=======
+const happyNotes = [
+  "C4",
+  "D4",
+  "E4",
+  "F4",
+  "G4",
+  "A4",
+  "B4",
+  "C5",
+  "D5",
+  "E5",
+  "F5",
+  "G5",
+  "A5",
+  "B5",
+];
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 const angryNotes = ["C4", "C#4", "D#4", "F#4", "G#4", "A#4", "B4"]; // Dissonant/random notes
 
@@ -107,8 +146,13 @@ function setup() {
   handpose.detectStart(video, getHandsData);
 
   mic = new Tone.UserMedia();
+<<<<<<< HEAD
   meter = new Tone.Meter(); 
   mic.connect(meter); 
+=======
+  meter = new Tone.Meter();
+  mic.connect(meter);
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
   field = generateField();
   generateAgents();
@@ -116,6 +160,10 @@ function setup() {
   // Skapa GainNode
   gainNode = new Tone.Gain(volumeValue).toDestination();  
   distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
+  reverb = new Tone.Reverb({
+    decay: 3, // Base decay time
+    preDelay: 0.01, // Small pre-delay
+  }).connect(gainNode);
 
   // Koppla synth till distortion
   synth = new Tone.PolySynth(Tone.Synth, {
@@ -129,12 +177,14 @@ function setup() {
       release: releaseValue,
     },
   }).connect(distortion); // Koppla synthens output till distorsion
+  synth.connect(reverb);
 
   if (angryMood < 70) {
     distortion.distortion = 0;
   }
 
   let colorRandom1 = Math.random();
+<<<<<<< HEAD
 let colorRandom2 = Math.random();
 
 //Get colorpicker positions
@@ -144,6 +194,16 @@ color1Y = video.height - (video.height * colorRandom1);
 color2X = video.width - (video.width * colorRandom2);
 color2Y = video.height - (video.height * colorRandom2);
 
+=======
+  let colorRandom2 = Math.random();
+
+  //Get colorpicker positions
+  color1X = video.width - video.width * colorRandom1;
+  color1Y = video.height - video.height * colorRandom1;
+
+  color2X = video.width - video.width * colorRandom2;
+  color2Y = video.height - video.height * colorRandom2;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 }
 
 function soundValuesUpdate() {
@@ -175,7 +235,12 @@ function soundValuesUpdate() {
     intervalAngryMoodRemove = (angryMood / 100) * intervalRandomFactor;
     intervalTiredMoodAdd = (tiredMood / 100) * intervalRandomFactor;
     //direct operator for interval length
+<<<<<<< HEAD
     interval = intervalBaseValue - intervalAngryMoodRemove + intervalTiredMoodAdd;
+=======
+    interval =
+      intervalBaseValue - intervalAngryMoodRemove + intervalTiredMoodAdd;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
     //Distortion
     if (angryMood > 70) {
@@ -189,6 +254,7 @@ function soundValuesUpdate() {
       distortion.distortion = 0;
     }
 
+<<<<<<< HEAD
     //Off timing (only for tiredmood 70+)
     if(tiredMood > 70) {
     tiredOffTiming1 = (tiredMood/100) * (Math.random() * 0.3 - 0.15);
@@ -197,6 +263,21 @@ function soundValuesUpdate() {
     tiredOffTiming1 = 0;
     tiredOffTiming2 = 0;
   }
+=======
+    // reverb wetness based on tiredMood (0 to 1)
+    reverb.wet.value = tiredMood / 100;
+    // Optionally adjust reverb decay time for a more pronounced effect
+    reverb.decay = 1 + (tiredMood / 100) * 3;
+
+    //Off timing (only for tiredmood 70+)
+    if (tiredMood > 70) {
+      tiredOffTiming1 = (tiredMood / 100) * (Math.random() * 0.3 - 0.15);
+      tiredOffTiming2 = (tiredMood / 100) * (Math.random() * 0.2 - 0.1);
+    } else {
+      tiredOffTiming1 = 0;
+      tiredOffTiming2 = 0;
+    }
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
     //Update Synth
     synth.set({
@@ -263,6 +344,7 @@ function draw() {
 
   //Kolla om det ska starta eller ej
   if (gameStarted) {
+<<<<<<< HEAD
     
   // Hämta färgvärdet (RGBA) vid mitten av videon
   color1 = video.get(color1X, color1Y);
@@ -284,6 +366,28 @@ function draw() {
   fill(r2, g2, b2);
   rect(video.width - 60, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
   pop();
+=======
+    // Hämta färgvärdet (RGBA) vid mitten av videon
+    color1 = video.get(color1X, color1Y);
+    color2 = video.get(color2X, color2Y);
+
+    // Extrahera RGB-värden
+    let r1 = color1[0];
+    let g1 = color1[1];
+    let b1 = color1[2];
+
+    let r2 = color2[0];
+    let g2 = color2[1];
+    let b2 = color2[2];
+
+    push();
+    noStroke();
+    fill(r1, g1, b1);
+    rect(10, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
+    fill(r2, g2, b2);
+    rect(video.width - 60, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
+    pop();
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 
     ///FIXAAAAAAAAAA DENNA
     //FIXA FIXA FIXA
@@ -325,7 +429,11 @@ function draw() {
         const defaultDirection = createVector(0, 0); // Exempelvis rakt nedåt
         agent.follow(defaultDirection);
       }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
       agent.update();
       agent.checkBorders();
       agent.draw();
@@ -353,18 +461,46 @@ function draw() {
           angryMood = angryMood + (Math.random() * 0.5);
         }
 
+<<<<<<< HEAD
         let middleFingerPose = middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
         //Pose "middle finger" to make it more angry fast
         if (middleFingerPose && interactionTimer > 10 && angryMood < 100) {
           angryMood = angryMood + (Math.random() * 8)
+=======
+        let middleFingerPose =
+          middleFinger.y < thumb.y - 30 &&
+          middleFinger.y < indexFinger.y - 50 &&
+          middleFinger.y < ringFinger.y - 50 &&
+          middleFinger.y < pinky.y - 50;
+        //Pose "middle finger" to make it more angry fast
+        if (middleFingerPose && interactionTimer > 10 && angryMood < 100) {
+          angryMood = angryMood + Math.random() * 8;
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
           interactionTimer = 0;
           console.log("Angry mood increased because of middlefinger-pose!");
         }
 
         //pose "peace" to make it happier
+<<<<<<< HEAD
         let peacePoseIndex = indexFinger.y < thumb.y - 30 && indexFinger.y < ringFinger.y - 50 && indexFinger.y < pinky.y - 50;
         let peacePoseMiddle = middleFinger.y < thumb.y - 30 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
         if (peacePoseIndex && peacePoseMiddle && interactionTimer > 10 && angryMood > 4) {
+=======
+        let peacePoseIndex =
+          indexFinger.y < thumb.y - 30 &&
+          indexFinger.y < ringFinger.y - 50 &&
+          indexFinger.y < pinky.y - 50;
+        let peacePoseMiddle =
+          middleFinger.y < thumb.y - 30 &&
+          middleFinger.y < ringFinger.y - 50 &&
+          middleFinger.y < pinky.y - 50;
+        if (
+          peacePoseIndex &&
+          peacePoseMiddle &&
+          interactionTimer > 10 &&
+          angryMood > 4
+        ) {
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
           angryMood -= Math.random() * 4;
           interactionTimer = 0;
           console.log("Angry mood decreased because of peace-pose!");
@@ -373,6 +509,7 @@ function draw() {
     }
 
     //Mic mood changes (Had to be here, since the "high noice" might be missed if only checked in intervals.)
+<<<<<<< HEAD
     if(micVolume > -15 && interactionTimer > 10){
       let randomCheck = Math.random();
       if(randomCheck >= 0.6 && angryMood < 100){
@@ -381,6 +518,16 @@ function draw() {
       } else if (randomCheck < 0.6 && tiredMood > 1) {
         tiredMood = tiredMood - (0.5*Math.random());
         console.log("Tiredmood decreased because of sound!")
+=======
+    if (micVolume > -15 && interactionTimer > 10) {
+      let randomCheck = Math.random();
+      if (randomCheck >= 0.6 && angryMood < 100) {
+        angryMood = angryMood + 0.5 * Math.random();
+        console.log("Angrymood increase because of sound!");
+      } else if (randomCheck < 0.6 && tiredMood > 1) {
+        tiredMood = tiredMood - 0.5 * Math.random();
+        console.log("Tiredmood decreased because of sound!");
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
       }
       interactionTimer = 0;
     }
@@ -390,9 +537,15 @@ function draw() {
     //Play sound timer
     if (timer > interval) {
       //Constantly makes the system more tired for the longer it plays
+<<<<<<< HEAD
       if(tiredMood < 100){
       tiredMood = tiredMood + (Math.random() * 0.5);
     }
+=======
+      if (tiredMood < 100) {
+        tiredMood = tiredMood + Math.random() * 0.5;
+      }
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
       //Play notes
       playNote();
       //reset timer
@@ -400,7 +553,11 @@ function draw() {
     }
 
     //Update sound values based on the current mood, and not constantly
+<<<<<<< HEAD
     if(soundTimer > soundInterval && soundInteraction === false){
+=======
+    if (soundTimer > soundInterval && soundInteraction === false) {
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
       soundInteraction = true;
       soundTimer = 0;
     }
@@ -429,6 +586,7 @@ function draw() {
     }
 
     //Makes sure the values doesnt go far below 1 (Can mess up some values)
+<<<<<<< HEAD
     if(angryMood < 1){
       angryMood = 1;
     }
@@ -436,6 +594,14 @@ function draw() {
       tiredMood = 1;
     }
 
+=======
+    if (angryMood < 1) {
+      angryMood = 1;
+    }
+    if (tiredMood < 1) {
+      tiredMood = 1;
+    }
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
   }
 }
 
@@ -445,6 +611,7 @@ function getHandsData(results) {
 
 // Play the synth notes function
 function playNote() {
+<<<<<<< HEAD
 
   //Choice of note1, either random or logic depending on mood
   if(angryMood < 26){
@@ -491,6 +658,54 @@ function playNote() {
     note3 = 0;
   } else if (note3 == 8) {
     note3 = 1;
+=======
+  //Choice of note1, either random or logic depending on mood
+  if (angryMood < 26) {
+    if (note1 === 0) {
+      note1 = 3;
+    } else if (note1 === 3) {
+      note1 = 4;
+    } else if (note1 === 4) {
+      note1 = 7;
+    } else if (note1 === 7) {
+      note1 = 10;
+    } else if (note1 === 10) {
+      note1 = 0;
+    } else {
+      note1 = 0;
+    }
+  } else {
+    note1 = Math.floor(Math.random() * 6);
+  }
+
+  //Choice of note2 or 3 logic, also changing based on mood
+  if (angryMood < 26) {
+    note2 = note1 + 2;
+    if (note2 == 14) {
+      note2 = 0;
+    } else if (note2 == 15) {
+      note2 = 1;
+    }
+    note3 = note2 + 2;
+    if (note3 == 14) {
+      note3 = 0;
+    } else if (note3 == 15) {
+      note3 = 1;
+    }
+  } else {
+    note2 = note1 + 2;
+    if (note2 == 7) {
+      note2 = 0;
+    } else if (note2 == 8) {
+      note2 = 1;
+    }
+    note3 = note2 + 2;
+    if (note3 == 7) {
+      note3 = 0;
+    } else if (note3 == 8) {
+      note3 = 1;
+    }
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
   }
 }
 
@@ -508,6 +723,7 @@ function playNote() {
     } else{
       synth.triggerAttackRelease(notes[note1], "8n", now); 
     }
+<<<<<<< HEAD
     if(randomValue2 > 0.5){
       synth.triggerAttackRelease(angryNotes[note2], "8n", now  + tiredOffTiming1); 
     } else{
@@ -528,6 +744,35 @@ else {
   synth.triggerAttackRelease(notes[note2], "8n", now + tiredOffTiming1); 
   synth.triggerAttackRelease(notes[note3], "8n", now + tiredOffTiming2); 
 }
+=======
+    if (randomValue2 > 0.5) {
+      synth.triggerAttackRelease(
+        angryNotes[note2],
+        "8n",
+        now + tiredOffTiming1
+      );
+    } else {
+      synth.triggerAttackRelease(notes[note2], "8n", now + tiredOffTiming1);
+    }
+    if (randomValue3 > 0.5) {
+      synth.triggerAttackRelease(
+        angryNotes[note3],
+        "8n",
+        now + tiredOffTiming2
+      );
+    } else {
+      synth.triggerAttackRelease(notes[note3], "8n", now + tiredOffTiming2);
+    }
+  } else if (angryMood < 26) {
+    synth.triggerAttackRelease(happyNotes[note1], "8n", now);
+    synth.triggerAttackRelease(happyNotes[note2], "8n", now + tiredOffTiming1);
+    synth.triggerAttackRelease(happyNotes[note3], "8n", now + tiredOffTiming2);
+  } else {
+    synth.triggerAttackRelease(notes[note1], "8n", now);
+    synth.triggerAttackRelease(notes[note2], "8n", now + tiredOffTiming1);
+    synth.triggerAttackRelease(notes[note3], "8n", now + tiredOffTiming2);
+  }
+>>>>>>> 8c3c12a98361b280e926184f6e0fbbae9db25fe2
 }
 
 //Garrit flow field
