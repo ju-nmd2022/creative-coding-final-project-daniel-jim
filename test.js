@@ -6,7 +6,8 @@ let synth;
 let gainNode;
 let distortion; 
 let timer = 0;
-let interactionTimer = 10;
+let interactionTimer = 0;
+let interactionInterval = 20;
 
 //Get colorpicker positions
 let color1;
@@ -15,6 +16,8 @@ let color1X;
 let color1Y;
 let color2X;
 let color2Y;
+let colorTimer = 0;
+let colorInterval = 100;
 
 //Mic
 let mic;
@@ -28,7 +31,8 @@ let note2 = 2;
 let note3 = 4;
 
 // Moods (random starting point)
-let tiredMood = 20 + (Math.random() * 10);
+let tiredMood = 20;
+//let tiredMood = 20 + (Math.random() * 10);
 let angryMood = 40 + (Math.random() * 20);
 
 //Off Variables (Make sound off timing)
@@ -60,7 +64,10 @@ let distortionValue =
 let volumeBaseValue = 0.2;
 let volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
 let volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
-let volumeValue = volumeBaseValue + volumeValueAngryAdd;
+let volumeTiredRandomFactor = 0.2 + Math.random() * 0.1;
+let volumeValueTiredRemove = (tiredMood/100) * volumeTiredRandomFactor;
+
+let volumeValue = volumeBaseValue + volumeValueAngryAdd - volumeValueTiredRemove;
 
 // Interval values
 let intervalBaseValue = 26;
@@ -80,8 +87,8 @@ let soundInterval = 30;
 let soundTimer = 0;
 
 //Width and height for camera and canvas
-widthSetup = (innerWidth / 4) * 3; // three fourths of screen
-heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
+let widthSetup = (innerWidth / 4) * 3; // three fourths of screen
+let heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
 
 //Flow field
 const fieldSize = 50;
@@ -92,7 +99,18 @@ let field = [];
 let agents = [];
 let middleFingerPos;
 
+//rectangles
+let rectangles = [];
+let rectangleTimer = 0;
+let rectangleInterval = 150;
+
+
 let flowFieldCounter = 0; // Counter for flow field generation
+
+let offsetX = 80;
+let offsetY = -100;
+
+let speedAgentMood = 1 + ((1 - tiredMood / 100) * 8);
 
 function preload() {
   handpose = ml5.handPose();
@@ -166,8 +184,10 @@ function soundValuesUpdate() {
     volumeBaseValue = 0.2;
     volumeAngryRandomFactor = 0.15 + Math.random() * 0.1;
     volumeValueAngryAdd = (angryMood/100) * volumeAngryRandomFactor;
+    volumeTiredRandomFactor = 0.2 + Math.random() * 0.1;
+    volumeValueTiredRemove = (tiredMood/100) * volumeTiredRandomFactor;
     // Direct operator for Volume Value
-    volumeValue = volumeBaseValue + volumeValueAngryAdd;
+    volumeValue = volumeBaseValue + volumeValueAngryAdd - volumeValueTiredRemove;
 
     //Interval
     intervalBaseValue = 26;
@@ -240,11 +260,157 @@ function generateAgents() {
     let agent = new Agent(
       Math.random() * widthSetup, // Video width
       Math.random() * heightSetup, // Video height
-      4,
-      0.1
+      speedAgentMood,
+      0.2
     );
     agents.push(agent);
   }
+}
+
+function generateRectangle() {
+    let x = Math.random() * widthSetup;
+    let y = Math.random() * heightSetup;
+    let w = widthSetup * 0.08;
+    let h = widthSetup * 0.08;
+    let color;
+
+    if(y > (heightSetup - h)){
+      y = y - h;
+    }
+    if(x > (widthSetup - w)){
+      x = x - h;
+    }
+
+    let randomColorNumber = Math.random();
+    if(randomColorNumber > 0.5){
+      color = 1;
+    } else if (randomColorNumber > 0.15){
+      color = 2;
+    }else {
+      color = 3;
+    }
+    
+    let rectangle = {
+      x: x,
+      y: y,
+      width: w,
+      height: h,
+      color: color,
+      lifeTime: 250,
+      counter: 0
+    };
+    
+    rectangles.push(rectangle);
+  }
+function drawRectangles() {
+  for (rectangle of rectangles) {
+    push();
+    if(rectangle.color == 1){
+      stroke(220, 220, 220);
+    } else if (rectangle.color == 2){
+      stroke(0, 0, 220);
+    } else {
+      stroke(220, 0, 0);
+    }
+    noFill();
+    strokeWeight(3);
+    rect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+    pop();
+  }
+}
+
+function checkAgentInsideRect() {
+  for (let r = 0; r < rectangles.length; r++) {
+    let rectangle = rectangles[r];
+    // Variabel för att räkna antalet agenter inom rektangeln
+    let agentsInsideRect = 0;
+          // Gå igenom alla agenter för att kontrollera om de är inuti rektangeln
+          for (let agent of agents) {
+            let agentInsideRectangleX = agent.position.x > rectangle.x && agent.position.x < rectangle.x + rectangle.width;
+            let agentInsideRectangleY = agent.position.y > rectangle.y && agent.position.y < rectangle.y + rectangle.height;
+
+            if (agentInsideRectangleX && agentInsideRectangleY) {
+              agentsInsideRect++;  // Öka räknaren för varje agent som är inuti rektangeln
+            }
+          }
+
+          //Add or remove to modes when taking a rectangle
+          if (agentsInsideRect > widthSetup * 0.01) {
+            if(rectangle.color === 1){
+              if(tiredMood > 10){
+                tiredMood = tiredMood - 10;
+              }
+            } else if (rectangle.color === 2){
+              if(angryMood > 5){
+                 angryMood = angryMood - 5;
+              }
+            } else {
+              if(angryMood < 100){
+                angryMood = angryMood + 15;
+             }
+            }
+            rectangles.splice(r, 1);  
+            break;
+          }else if(rectangle.counter > rectangle.lifeTime){
+            rectangles.splice(r, 1);  
+            break;
+          }
+          rectangle.counter++;
+   }
+ }
+
+
+// Random color positions and their colors and effects
+function randomColors(){
+  //Variables for rgb values and position
+  color1 = video.get(color1X, color1Y);
+  color2 = video.get(color2X, color2Y);
+  let r1 = color1[0];
+  let g1 = color1[1];
+  let b1 = color1[2];
+  let r2 = color2[0];
+  let g2 = color2[1];
+  let b2 = color2[2];
+
+  //drawing of rects in corners
+  push();
+  noStroke();
+  fill(r1, g1, b1);
+  rect(10, 10, 50, 50);
+  fill(r2, g2, b2);
+  rect(video.width - 60, 10, 50, 50);
+  pop();
+
+  //If both random color positions is dark/black tired mood goes up quickly, and reversed for light/white
+  if(r1 < 30 && g1 < 30 && b1 < 30 && r2 < 30 && g2 < 30 && b2 < 30){
+    tiredMood = tiredMood + Math.random() * 0.25;
+  } else if (r1 > 225 && g1 > 225 && b1 > 225 && r2 > 225 && g2 > 225 && b2 > 225) {
+    tiredMood = tiredMood - Math.random() * 0.25;
+  }
+
+  //Color 1 focus on angry mood while Color 2 focus on tired mood
+  //dominant red value
+  if(r1 > g1 + 60 && r1 > b1 + 60 && angryMood < 100){
+    angryMood = angryMood + Math.random()*0.1
+  }
+  if(r2 > g2 + 60 && r2 > b2 + 60 && tiredMood < 100){
+    tiredMood = tiredMood + Math.random()*0.1
+  }
+  //dominant blue value
+  if(b1 > g1 + 60 && b1 > r1 + 60 && angryMood > 1){
+    angryMood = angryMood - Math.random()*0.1
+  }
+  if(b2 > g2 + 60 && b2 > r2 + 60 && tiredMood > 1){
+    tiredMood = tiredMood - Math.random()*0.1
+  }
+  //dominant green value
+  if(g1 > r1 + 60 && g1 > b1 + 60){
+    angryMood = (angryMood * Math.random()*0.3) - 0.15;
+  }
+  if(g2 > r2 + 60 && g2 > b2 + 60){
+    tiredMood = (tiredMood * Math.random()*0.3) - 0.15;
+  }
+
 }
 
 function mouseClicked() {
@@ -257,39 +423,16 @@ function mouseClicked() {
 }
 
 function draw() {
-  translate(video.width, 0); // Flytta koordinatsystemet till höger kanten av videon
-  scale(-1, 1); // Invertera videon horisontellt
-  image(video, 0, 0); // Rita videon
-
-  //Kolla om det ska starta eller ej
   if (gameStarted) {
+  //Video drawing & inverting
+  translate(video.width, 0);
+  scale(-1, 1);
+  image(video, 0, 0);
     
-  // Hämta färgvärdet (RGBA) vid mitten av videon
-  color1 = video.get(color1X, color1Y);
-  color2 = video.get(color2X, color2Y);
 
-  // Extrahera RGB-värden
-  let r1 = color1[0];
-  let g1 = color1[1];
-  let b1 = color1[2];
-
-  let r2 = color2[0];
-  let g2 = color2[1];
-  let b2 = color2[2];
-
-  push();
-  noStroke();
-  fill(r1, g1, b1);
-  rect(10, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
-  fill(r2, g2, b2);
-  rect(video.width - 60, 10, 50, 50); // Rita en liten ruta med färgen från mitten av videon
-  pop();
-
-    ///FIXAAAAAAAAAA DENNA
-    //FIXA FIXA FIXA
-    //FIXA RANDOM!
-    let offsetX = 80;
-    let offsetY = -100;
+    //Random follow points based on middle finger
+    let offsetX = (Math.random() * 200) - 100;
+    let offsetY = (Math.random() * 200) - 100;
     // Get the current middle finger position
     if (hands.length > 0) {
       let hand = hands[0];
@@ -306,7 +449,6 @@ function draw() {
       field = generateField(); // Regenerate the field
       flowFieldCounter = 0; // Reset the counter
     }
-
 
      // Agents follow the updated field
      for (let agent of agents) {
@@ -335,42 +477,86 @@ function draw() {
     if (hands.length > 0) {
       for (let i = 0; i < hands.length; i++) {
         let hand = hands[i];
-        let indexFinger = hand.index_finger_tip;
-        let thumb = hand.thumb_tip;
-        let middleFinger = hand.middle_finger_tip;
-        let ringFinger = hand.ring_finger_tip;
-        let pinky = hand.pinky_finger_tip;
+        let indexFingerTop = hand.index_finger_tip;
+        let thumbTop = hand.thumb_tip;
+        let middleFingerTop = hand.middle_finger_tip;
+        let ringFingerTop = hand.ring_finger_tip;
+        let pinkyTop = hand.pinky_finger_tip;
+        let indexFingerMid = hand.index_finger_pip;
+        let thumbMid = hand.thumb_ip; //I think this is a bug, pip doesnt work but ip does!!
+        let middleFingerMid = hand.middle_finger_pip;
+        let ringFingerMid = hand.ring_finger_pip;
+        let pinkyMid = hand.pinky_finger_pip;
+        let indexFingerBottom = hand.index_finger_mcp;
+        let middleFingerBottom = hand.middle_finger_mcp;
+        let pinkyBottom = hand.pinky_finger_mcp;
 
         fill(0, 255, 0);
-        ellipse(indexFinger.x, indexFinger.y, 10);
-        ellipse(thumb.x, thumb.y, 10);
-        ellipse(middleFinger.x, middleFinger.y, 10);
-        ellipse(ringFinger.x, ringFinger.y, 10);
-        ellipse(pinky.x, pinky.y, 10);
+        ellipse(indexFingerTop.x, indexFingerTop.y, 10);
+        ellipse(indexFingerBottom.x, indexFingerBottom.y, 10);
+        ellipse(thumbTop.x, thumbTop.y, 10);
+        ellipse(middleFingerTop.x, middleFingerTop.y, 10);
+        ellipse(ringFingerTop.x, ringFingerTop.y, 10);
+        ellipse(pinkyTop.x, pinkyTop.y, 10);
 
-        // Om pinky är i ett visst område, öka angryMood
-        if(pinky.x > 400 && pinky.y < 100 && angryMood < 100 && timer > interval){
-          angryMood = angryMood + (Math.random() * 0.5);
-        }
 
-        let middleFingerPose = middleFinger.y < thumb.y - 30 && middleFinger.y < indexFinger.y - 50 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
-        //Pose "middle finger" to make it more angry fast
-        if (middleFingerPose && interactionTimer > 10 && angryMood < 100) {
-          angryMood = angryMood + (Math.random() * 8)
+         //Pose "middle finger" to make it more angry fast
+        let middleFingerPoseTops = middleFingerTop.y < thumbTop.y && middleFingerTop.y < indexFingerTop.y && middleFingerTop.y < ringFingerTop.y && middleFingerTop.y < pinkyTop.y;
+        let middleFingerPoseMid = middleFingerMid.y < indexFingerTop.y - 10 && middleFingerMid.y < ringFingerTop.y && middleFingerMid.y < pinkyTop.y;
+        let middleFingerPose = middleFingerTop.y < middleFingerMid.y;
+        if (middleFingerPoseTops && middleFingerPoseMid && middleFingerPose && interactionTimer > interactionInterval && angryMood < 100) {
+          angryMood = angryMood + (Math.random() * 6)
           interactionTimer = 0;
           console.log("Angry mood increased because of middlefinger-pose!");
         }
 
         //pose "peace" to make it happier
-        let peacePoseIndex = indexFinger.y < thumb.y - 30 && indexFinger.y < ringFinger.y - 50 && indexFinger.y < pinky.y - 50;
-        let peacePoseMiddle = middleFinger.y < thumb.y - 30 && middleFinger.y < ringFinger.y - 50 && middleFinger.y < pinky.y - 50;
-        if (peacePoseIndex && peacePoseMiddle && interactionTimer > 10 && angryMood > 4) {
-          angryMood -= Math.random() * 4;
+        let peacePoseIndexTop = indexFingerTop.y < thumbTop.y && indexFingerTop.y < ringFingerTop.y && indexFingerTop.y < pinkyTop.y;
+        let peacePoseMiddleTop = middleFingerTop.y < thumbTop.y && middleFingerTop.y < ringFingerTop.y && middleFingerTop.y < pinkyTop.y;
+        let peacePoseIndexMid = indexFingerMid.y < thumbTop.y && indexFingerMid.y < ringFingerTop.y && indexFingerMid.y < pinkyTop.y;
+        let peacePoseMiddleMid = middleFingerMid.y < thumbTop.y && middleFingerMid.y < ringFingerTop.y && middleFingerMid.y < pinkyTop.y;
+
+        if (peacePoseIndexTop && peacePoseMiddleTop && peacePoseIndexMid && peacePoseMiddleMid && interactionTimer > interactionInterval && angryMood > 4) {
+          angryMood = angryMood - Math.random() * 4;
           interactionTimer = 0;
           console.log("Angry mood decreased because of peace-pose!");
         }
+
+
+        //Thumbs up & down pose
+        let indexFingerDifference = indexFingerTop.x - indexFingerBottom.x;
+        let middleFingerDifference = middleFingerTop.x - middleFingerBottom.x;
+        let pinkyBottomFingerDifference = pinkyTop.x - pinkyBottom.x;
+        let indexFingerIn = indexFingerDifference < 40 && indexFingerDifference > 0 || indexFingerDifference < 0 && indexFingerDifference > -40;
+        let middleFingerIn = middleFingerDifference < 40 && middleFingerDifference > 0 || middleFingerDifference < 0 && middleFingerDifference > -40;
+        let pinkyIn = pinkyBottomFingerDifference < 40 && pinkyBottomFingerDifference > 0 || pinkyBottomFingerDifference < 0 && pinkyBottomFingerDifference > -40;
+        let thumbUpPoseY = thumbMid.y < indexFingerTop.y && thumbMid.y < middleFingerTop.y && thumbMid.y < ringFingerTop.y && thumbMid.y < pinkyTop.y;
+        let thumbIsUp = thumbTop.y < thumbMid.y;
+        let thumbDownPoseY = thumbMid.y > indexFingerTop.y && thumbMid.y > middleFingerTop.y && thumbMid.y > ringFingerTop.y && thumbMid.y > pinkyTop.y;
+        let thumbIsDown = thumbTop.y > thumbMid.y;
+        //thumbs up
+        if(thumbUpPoseY && thumbIsUp && indexFingerIn && middleFingerIn && pinkyIn && interactionTimer > interactionInterval && tiredMood > 2){
+          tiredMood = tiredMood - Math.random() * 3;
+          interactionTimer = 0;
+          console.log("Tired mood decreased because of thumbs up!");
+        }
+        //thumbsdown
+        if(thumbDownPoseY && thumbIsDown && indexFingerIn && middleFingerIn && pinkyIn && interactionTimer > interactionInterval && tiredMood < 100){
+          tiredMood = tiredMood + Math.random() * 1.5;
+          interactionTimer = 0;
+          console.log("Tired mood increased because of thumbs down!");
+        }
+
+
+        // Om pinky är i ett visst område, öka angryMood
+        if(pinkyTop.x > 400 && pinkyTop.y < 100 && angryMood < 100 && timer > interval){
+          angryMood = angryMood + (Math.random() * 0.5);
+        }
+
+
       }
     }
+
 
     //Mic mood changes (Had to be here, since the "high noice" might be missed if only checked in intervals.)
     if(micVolume > -15 && interactionTimer > 10){
@@ -384,6 +570,8 @@ function draw() {
       }
       interactionTimer = 0;
     }
+
+    randomColors();
 
     // Timers & Counters
 
@@ -405,6 +593,17 @@ function draw() {
       soundTimer = 0;
     }
 
+    //random color positions update
+    if(colorTimer > colorInterval){
+      let colorRandom1 = Math.random();
+      let colorRandom2 = Math.random();
+      color1X = video.width - (video.width * colorRandom1);
+      color1Y = video.height - (video.height * colorRandom1);
+      color2X = video.width - (video.width * colorRandom2);
+      color2Y = video.height - (video.height * colorRandom2);
+      colorTimer = 0;
+    }
+
     //Update values with function(s)
     soundValuesUpdate();
 
@@ -412,6 +611,7 @@ function draw() {
     timer++;
     interactionTimer++;
     soundTimer++;
+    colorTimer++;
 
     //Mic volume level
     micVolume = meter.getValue();
@@ -436,6 +636,26 @@ function draw() {
       tiredMood = 1;
     }
 
+
+    checkAgentInsideRect();
+    if(rectangles.length < 4){
+      rectangleTimer++;
+      if(rectangleTimer > rectangleInterval){
+        generateRectangle();
+        rectangleTimer = 0;
+      }
+    }
+    drawRectangles();
+
+
+  }
+  //Start Screen
+  else {
+    push();
+    fill(210, 210, 210);
+    rect(0, 0, widthSetup, heightSetup);
+
+    pop();
   }
 }
 
@@ -443,9 +663,7 @@ function getHandsData(results) {
   hands = results;
 }
 
-// Play the synth notes function
-function playNote() {
-
+function noteOrderLogic(){
   //Choice of note1, either random or logic depending on mood
   if(angryMood < 26){
     if(note1 === 0){
@@ -494,9 +712,13 @@ function playNote() {
   }
 }
 
-  // Get the current time from Tone.js
+}
+
+// Play the synth notes function
+function playNote() {
+  noteOrderLogic();
+
   let now = Tone.now();
-  // Spela tre noter med små fördröjningar mellan
 
   if(angryMood > 75 && Math.random() > 0.5){
     let randomValue1 = Math.random();
@@ -530,7 +752,7 @@ else {
 }
 }
 
-//Garrit flow field
+//Agent class
 class Agent {
   constructor(x, y, maxSpeed, maxForce) {
     this.position = createVector(x, y);
@@ -565,6 +787,7 @@ class Agent {
     this.position.add(this.velocity);
     this.position.x += shakeX; // Apply the shake to X
     this.position.y += shakeY; // Apply the shake to Y
+    this.maxSpeed = 1 + ((1 - tiredMood / 100) * 8);
   }
 
 

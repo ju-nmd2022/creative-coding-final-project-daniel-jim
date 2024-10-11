@@ -1,28 +1,8 @@
-Random position följa flowfield (runt fingret)
 
-Lägga ihop flowfieldet till nya koden
-
-Cirklar till flowfieldet
-
-Mer positioner / eventuellt poser för ändra mode
-
-Något mer som effectas av tiredMood
-
-Färgerna från random positionerna ska påverka mood också
-
-Flowfieldet snabbare / långsammare baserat på mood.
-
-Flowfield linjer istället för cirklar
-
+Start screen
 -- 
+hidden poses
 
-Jag lägger ihop koder - 1
-
-Du kolla reverb med nya koden när du pullat (lägger igen i test 3 jim)
-
-checkar jag av allt annat på listan
-
-
-
-
-
+EXTRA 
+Angry större random offset
+Pose timer // Kolla så man håller pose för en kort stund innan det registreras, så inte extremt snabba "poser" ger effekt".
