@@ -200,7 +200,6 @@ function soundValuesUpdate() {
     });
 }
 
-//Garrit flow field code
 function generateField() {
   let field = [];
   noiseSeed(Math.random() * 100);
@@ -751,21 +750,21 @@ class Agent {
 REFERENCES
 
 The starting point / set up for the camera and hand detection 
-Line: 3-6, 110-113, 342-343 (the loop) + 345, 571-573 667-669
+Line: 3-6, 110-113, 341-342 (the loop) + 344, 570-572 666-668
 Is inspired from:
 CANVAS - Creative Coding - Modules - Material - HandPose Example-Bassima.zip 
 
 The flowfield startingpoints creation & Agent class
-Line: 204-225
+Line: 203-224
 Is inspired from:
 CANVAS - Creative Coding - Modules - Lectures - Complexity
 (Garrits flowfield example in the lecture)
 
 The shake intensity function
-Line: 698 699
+Line: 697-698
 Is created with help from Chat GPT
 
 Get colors from a specific point in the video cam
-Line: 318
+Line: 317
 Is created with help from Chat GPT
 */
