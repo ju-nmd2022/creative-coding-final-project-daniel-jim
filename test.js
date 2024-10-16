@@ -1,19 +1,28 @@
-//Variables
+let gameStarted = false;
+
+//Hand and video
 let handpose;
 let video;
+let hands = [];
+
+//Synth
 let synth;
 let gainNode;
 let distortion; 
 let reverb;
+
+//Interaction and sound  timer + interval
 let timer = 0;
 let interactionTimer = 0;
 let interactionInterval = 20;
-let gameStarted = false;
+let interactionAreaTimerX = 0;
+let interactionAreaIntervalX = 30;
+let interactionAreaTimerY = 0;
+let interactionAreaIntervalY = 30;
+let soundInterval = 30;
+let soundTimer = 0;
 
-//Arrays
-let hands = [];
-
-//Random color
+//Random color Variables
 let color1;
 let color1X;
 let color1Y;
@@ -22,6 +31,11 @@ let colorInterval = 100;
 let r1 = 0;
 let g1 = 0;
 let b1 = 0;
+
+//rectangles
+let rectangles = [];
+let rectangleTimer = 0;
+let rectangleInterval = 150;
 
 //Mic
 let mic;
@@ -36,12 +50,6 @@ let angryMood = 40 + (Math.random() * 20);
 let tiredOffTiming1 = 0;
 let tiredOffTiming2 = 0;
 
-//"grid" areas interactions
-let interactionAreaTimerX = 0;
-let interactionAreaIntervalX = 30;
-let interactionAreaTimerY = 0;
-let interactionAreaIntervalY = 30;
-
 // Attack values
 let attackBaseValue = 0.05 + Math.random() * 0.05;
 let attackAngryRandomFactor = 0.08 + Math.random() * 0.04;
@@ -53,9 +61,6 @@ let releaseBaseValue = 0.11 + Math.random() * 0.08;
 let releaseAngryRandomFactor = 0.37 + Math.random() * 0.06;
 let releaseValueAngryAdd = (1 - angryMood / 100) * releaseAngryRandomFactor;
 let releaseValue = releaseBaseValue + releaseValueAngryAdd;
-
-// Distortion (Start 0)
-let distortionValue = 0;
 
 //Volume start values
 let volumeBaseValue = 0.2;
@@ -80,10 +85,6 @@ const happyNotes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5", "E5", 
 const notes = ["C4", "D4", "E4", "F4", "G4", "A4", "B4"];
 const angryNotes = ["C4", "C#4", "D#4", "F#4", "G#4", "A#4", "B4"]; // Dissonant/random notes
 
-//Sound Interaction (Adjust how often sound updates)
-let soundInterval = 30;
-let soundTimer = 0;
-
 //Width and height for camera and canvas
 let widthSetup = (innerWidth / 4) * 3; // three fourths of screen
 let heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
@@ -96,11 +97,6 @@ const divider = 4;
 let field = [];
 let agents = [];
 let middleFingerPos;
-
-//rectangles
-let rectangles = [];
-let rectangleTimer = 0;
-let rectangleInterval = 150;
 
 let flowFieldCounter = 0; // Counter for flow field generation
 let speedAgentMood = 1 + ((1 - tiredMood / 100) * 8);
@@ -127,7 +123,7 @@ function setup() {
 
   // Skapa GainNode
   gainNode = new Tone.Gain(volumeValue).toDestination();  
-  distortion = new Tone.Distortion(distortionValue).connect(gainNode); // Justerbar distortion, värdet kan ändras
+  distortion = new Tone.Distortion(0).connect(gainNode); // Justerbar distortion, värdet kan ändras
   reverb = new Tone.Reverb({decay: 3, preDelay: 0.01}).connect(gainNode);
 
   // Koppla synth till distortion
@@ -659,8 +655,12 @@ function draw() {
     tiredMood = tiredMood + ((Math.random()* 0.3) - 0.15); //Make the moods change constantly without input a little
   } else { //START SCREEN!
     push();
-    fill(210, 210, 210);
+    fill(0, 0, 0);
     rect(0, 0, widthSetup, heightSetup);
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    fill(255)
+    text("CLICK TO START", widthSetup / 2, heightSetup / 2);
     pop();
   }
 }
