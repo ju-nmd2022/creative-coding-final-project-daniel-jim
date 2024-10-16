@@ -1,7 +1,6 @@
 //Variables
 let handpose;
 let video;
-let hands = [];
 let synth;
 let gainNode;
 let distortion; 
@@ -10,6 +9,9 @@ let timer = 0;
 let interactionTimer = 0;
 let interactionInterval = 20;
 let gameStarted = false;
+
+//Arrays
+let hands = [];
 
 //Random color
 let color1;
@@ -33,6 +35,12 @@ let angryMood = 40 + (Math.random() * 20);
 //Off Variables (Make sound off timing)
 let tiredOffTiming1 = 0;
 let tiredOffTiming2 = 0;
+
+//"grid" areas interactions
+let interactionAreaTimerX = 0;
+let interactionAreaIntervalX = 30;
+let interactionAreaTimerY = 0;
+let interactionAreaIntervalY = 30;
 
 // Attack values
 let attackBaseValue = 0.05 + Math.random() * 0.05;
@@ -94,7 +102,6 @@ let rectangles = [];
 let rectangleTimer = 0;
 let rectangleInterval = 150;
 
-
 let flowFieldCounter = 0; // Counter for flow field generation
 let speedAgentMood = 1 + ((1 - tiredMood / 100) * 8);
 
@@ -137,8 +144,7 @@ function setup() {
   }).connect(distortion); // Koppla synthens output till distorsion
   synth.connect(reverb);
 
-
-//Get colorpicker positions
+//Get random color positions
 color1X = video.width - (video.width * Math.random());
 color1Y = video.height - (video.height * Math.random());
 }
@@ -411,35 +417,44 @@ function checkForHandPose(){
 }
 
 function checkForHandPosition(){
-  //Width and height for camera and canvas
-  //let widthSetup = (innerWidth / 4) * 3; // three fourths of screen
-  //let heightSetup = (widthSetup /3) *2; //two thirds of width Setup (3:2 ratio)
-
-
-
+  let widthArea1 = 0;
+  let widthArea2 = (widthSetup/4);
+  let widthArea3 = (widthSetup/4) * 2;
+  let widthArea4 = (widthSetup/4) * 3;
+  let heightArea1 = 0;
+  let heightArea2 = (heightSetup/2);
 
   //Hand detector här inne görs poser
   if (hands.length > 0) {
     for (let i = 0; i < hands.length; i++) {
       let hand = hands[i];
-      let indexFingerTop = hand.index_finger_tip;
-      let thumbTop = hand.thumb_tip;
-      let middleFingerTop = hand.middle_finger_tip;
-      let ringFingerTop = hand.ring_finger_tip;
-      let pinkyTop = hand.pinky_finger_tip;
-      let indexFingerMid = hand.index_finger_pip;
-      let thumbMid = hand.thumb_ip; //I think this is a bug, pip doesnt work but ip does!!
-      let middleFingerMid = hand.middle_finger_pip;
-      let ringFingerMid = hand.ring_finger_pip;
-      let pinkyMid = hand.pinky_finger_pip;
-      let indexFingerBottom = hand.index_finger_mcp;
       let middleFingerBottom = hand.middle_finger_mcp;
-      let pinkyBottom = hand.pinky_finger_mcp;
 
-      //SKAPA GRID MED RANDOM SKIT!
-      // Om pinky är i ett visst område, öka angryMood
-      if(pinkyTop.x > 400 && pinkyTop.y < 100 && angryMood < 100 && timer > interval){
-        angryMood = angryMood + (Math.random() * 0.5);
+      let withinWidthArea1 = middleFingerBottom.x > widthArea1 && middleFingerBottom.x < widthArea1 + (widthSetup/4);
+      let withinWidthArea2 = middleFingerBottom.x > widthArea2 && middleFingerBottom.x < widthArea2 + (widthSetup/4);
+      let withinWidthArea3 = middleFingerBottom.x > widthArea3 && middleFingerBottom.x < widthArea3 + (widthSetup/4);
+      let withinWidthArea4 = middleFingerBottom.x > widthArea4 && middleFingerBottom.x < widthArea4 + (widthSetup/4);
+      let withinHeightArea1 = middleFingerBottom.y > heightArea1 && middleFingerBottom.y < heightArea1 + (heightSetup/2);
+      let withinHeightArea2 = middleFingerBottom.y > heightArea2 && middleFingerBottom.y < heightArea2 + (heightSetup/2);
+
+      if(withinWidthArea1 && interactionAreaTimerX > interactionAreaIntervalX){
+        angryMood = angryMood + (Math.random() * 0.2);
+        interactionAreaTimerX = 0;
+      }if(withinWidthArea2 && interactionAreaTimerX > interactionAreaIntervalX){
+        tiredMood = tiredMood + (Math.random() * 0.2);
+        interactionAreaTimerX = 0;
+      }if(withinWidthArea3 && interactionAreaTimerX > interactionAreaIntervalX){
+        angryMood = angryMood - (Math.random() * 0.2);
+        interactionAreaTimerX = 0;
+      }if(withinWidthArea4 && interactionAreaTimerX > interactionAreaIntervalX){
+        tiredMood = tiredMood - (Math.random() * 0.2);
+        interactionAreaTimerX = 0;
+      }if(withinHeightArea1 && interactionAreaTimerY > interactionAreaIntervalY){
+        angryMood = angryMood + Math.random() - 0.5;
+        interactionAreaTimerY = 0;
+      }if(withinHeightArea2 && interactionAreaTimerY > interactionAreaIntervalY){
+        tiredMood = tiredMood + Math.random() - 0.5;
+        interactionAreaTimerY = 0;
       }
   }
 }
@@ -601,7 +616,6 @@ function draw() {
       agent.checkBorders();
       agent.draw();
     }
-    //FLOW FIELD ENDS!
 
     //Check for handposes / positions in the camera, mic noise level and colors to increase/decrease moods.
     checkForHandPose();
@@ -629,7 +643,7 @@ function draw() {
     }
 
     //Increase values for timers
-    timer++, interactionTimer++, soundTimer++, colorTimer++, rectangleTimer++;
+    timer++, interactionTimer++, soundTimer++, colorTimer++, rectangleTimer++, interactionAreaTimerX++, interactionAreaTimerY++;
 
     //Makes sure the values doesnt go far above 100 or below 1 (Can mess up some values)
     if(angryMood > 100){
