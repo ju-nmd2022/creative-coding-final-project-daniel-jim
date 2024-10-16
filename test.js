@@ -441,6 +441,7 @@ function checkForHandPosition(){
       }
   }
 }
+}
 
 function micVolumeLevel() {
   if(micVolume > -15 && interactionTimer > 10){
