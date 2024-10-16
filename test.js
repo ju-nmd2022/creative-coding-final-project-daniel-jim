@@ -16,9 +16,9 @@ let timer = 0;
 let interactionTimer = 0;
 let interactionInterval = 20;
 let interactionAreaTimerX = 0;
-let interactionAreaIntervalX = 30;
+let interactionAreaIntervalX = 45;
 let interactionAreaTimerY = 0;
-let interactionAreaIntervalY = 30;
+let interactionAreaIntervalY = 45;
 let soundInterval = 30;
 let soundTimer = 0;
 
@@ -110,7 +110,6 @@ function setup() {
   video = createCapture(VIDEO);
   video.size(widthSetup, heightSetup);
   video.hide();
-
   handpose.detectStart(video, getHandsData);
 
   mic = new Tone.UserMedia();
@@ -180,10 +179,9 @@ function soundValuesUpdate() {
       distortion.distortion = 0;
     }
 
-    // reverb wetness based on tiredMood (0 to 1)
-    reverb.wet.value = tiredMood / 100;
-    // Optionally adjust reverb decay time for a more pronounced effect
-    reverb.decay = 1 + (tiredMood / 100) * 3;
+    // REVERB
+    reverb.wet.value = (tiredMood / 100) * Math.random();
+    reverb.decay = Math.random() + (tiredMood / 100) * 3;
     
     //Off timing (only for tiredmood 70+)
     if(tiredMood > 70) {
@@ -665,12 +663,10 @@ function draw() {
   }
 }
 
-//copy from lecture 
 function getHandsData(results) {
   hands = results;
 }
 
-//Agent class
 class Agent {
   constructor(x, y, maxSpeed, maxForce) {
     this.position = createVector(x, y);
@@ -699,7 +695,7 @@ class Agent {
     this.velocity.limit(this.maxSpeed);
     this.position.add(this.velocity);
     this.acceleration.mult(0);
-    let shakeX = (Math.random() - 0.5) * shakeIntensity; // Add random shake to the position based on the shakeIntensity (some gpt)
+    let shakeX = (Math.random() - 0.5) * shakeIntensity;
     let shakeY = (Math.random() - 0.5) * shakeIntensity;
     this.position.add(this.velocity);
     this.position.x += shakeX;
@@ -754,7 +750,22 @@ class Agent {
 /*
 REFERENCES
 
+The starting point / set up for the camera and hand detection 
+Line: 3-6, 110-113, 342-343 (the loop) + 345, 571-573 667-669
+Is inspired from:
+CANVAS - Creative Coding - Modules - Material - HandPose Example-Bassima.zip 
 
+The flowfield startingpoints creation & Agent class
+Line: 204-225
+Is inspired from:
+CANVAS - Creative Coding - Modules - Lectures - Complexity
+(Garrits flowfield example in the lecture)
 
+The shake intensity function
+Line: 698 699
+Is created with help from Chat GPT
 
+Get colors from a specific point in the video cam
+Line: 318
+Is created with help from Chat GPT
 */
