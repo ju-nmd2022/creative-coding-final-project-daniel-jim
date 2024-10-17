@@ -1,3 +1,5 @@
+/*    REFERENCES AT BOTTOM    */
+
 let gameStarted = false;
 
 //Hand and video
@@ -289,15 +291,15 @@ function checkAgentInsideRect() {
           if (agentsInsideRect > widthSetup * 0.01) { //Using widthsetup to be "responsive" for small/big screens
             if(rectangle.color === 1){
               if(tiredMood > 10){
-                tiredMood = tiredMood - 10; //makes it less tired
+                tiredMood = tiredMood - (16 * Math.random()); //makes it less tired
               }
             } else if (rectangle.color === 2){
               if(angryMood > 5){
-                 angryMood = angryMood - 5; //Makes it less angry
+                 angryMood = angryMood - (16 * Math.random()); //Makes it less angry
               }
             } else {
               if(angryMood < 100){
-                angryMood = angryMood + 10; //Makes it more angry
+                angryMood = angryMood + (16 * Math.random()); //Makes it more angry
              }
             }
             rectangles.splice(r, 1);  
@@ -352,14 +354,6 @@ function checkForHandPose(){
           let indexFingerBottom = hand.index_finger_mcp;
           let middleFingerBottom = hand.middle_finger_mcp;
           let pinkyBottom = hand.pinky_finger_mcp;
-  
-          fill(0, 255, 0);
-          ellipse(indexFingerTop.x, indexFingerTop.y, 10);
-          ellipse(indexFingerBottom.x, indexFingerBottom.y, 10);
-          ellipse(thumbTop.x, thumbTop.y, 10);
-          ellipse(middleFingerTop.x, middleFingerTop.y, 10);
-          ellipse(ringFingerTop.x, ringFingerTop.y, 10);
-          ellipse(pinkyTop.x, pinkyTop.y, 10);
   
           //Pose "middle finger" to make it more angry fast
           let middleFingerPoseTops = middleFingerTop.y < thumbTop.y && middleFingerTop.y < indexFingerTop.y && middleFingerTop.y < ringFingerTop.y && middleFingerTop.y < pinkyTop.y;
@@ -750,21 +744,21 @@ class Agent {
 REFERENCES
 
 The starting point / set up for the camera and hand detection 
-Line: 3-6, 110-113, 341-342 (the loop) + 344, 570-572 666-668
-Is inspired from:
+Line: 6-8, 112-115, 343-344 (the loop) + 346, 564-566, 659-661
+Is taken from:
 CANVAS - Creative Coding - Modules - Material - HandPose Example-Bassima.zip 
 
-The flowfield startingpoints creation & Agent class
-Line: 203-224
-Is inspired from:
+The flowfield & Agent class startingpoints
+Line: 205-226
+Is taken from:
 CANVAS - Creative Coding - Modules - Lectures - Complexity
 (Garrits flowfield example in the lecture)
 
 The shake intensity function
-Line: 697-698
+Line: 691-695
 Is created with help from Chat GPT
 
 Get colors from a specific point in the video cam
-Line: 317
+Line: 319
 Is created with help from Chat GPT
 */
